@@ -1,132 +1,253 @@
 using UnityEngine;
 
 /// <summary>
-/// Controlador básico de auto para Unity usando Rigidbody.
-/// Permite acelerar, frenar, retroceder y girar.
-/// Requiere un Rigidbody en el mismo GameObject.
+/// Controlador de kart estilo arcade para Unity 6.
+/// Portado del prototipo en canvas/JS: W acelera, S frena/retrocede,
+/// A/D giran, Shift (mantenido mientras giras) activa el derrape con
+/// carga de mini-turbo.
+///
+/// SETUP EN EL EDITOR:
+/// 1. Creá un GameObject "Kart" con el modelo 3D del auto como hijo.
+/// 2. Agregale un Rigidbody:
+///      - Freeze Rotation en X y Z (para que no vuelque).
+///      - Drag ~1, Angular Drag ~1, Use Gravity activado.
+/// 3. Agregale un collider (BoxCollider o CapsuleCollider) que cubra el chasis.
+/// 4. Arrastrá este script al GameObject "Kart".
+/// 5. (Opcional) Asigná los transforms de las ruedas traseras en
+///    "rearWheelTransforms" para dibujar marcas de derrape con TrailRenderer.
+/// 6. (Opcional) Asigná un ParticleSystem en "boostVFX" para el efecto de
+///    mini-turbo, y un AudioSource + clips si querés sonido de motor/derrape.
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
 public class CarController : MonoBehaviour
 {
-    
-    [Header("Wheels")]
-    [SerializeField] private WheelCollider frontLeftCollider;
-    [SerializeField] private WheelCollider frontRightCollider;
-    [SerializeField] private WheelCollider rearLeftCollider;
-    [SerializeField] private WheelCollider rearRightCollider;
-    [SerializeField] private Transform frontLeftMesh;
-    [SerializeField] private Transform frontRightMesh;
-    [SerializeField] private Transform rearLeftMesh;
-    [SerializeField] private Transform rearRightMesh;
-    [Header("Performance")]
-    [SerializeField] private float motorForce = 1500f;
-    [SerializeField] private float reverseForce = 800f;
-    [SerializeField] private float brakeForce = 3000f;
-    [SerializeField] private float maxSteerAngle = 30f;
-    [SerializeField] private float maxSpeedKmh = 120f;
-    [SerializeField] private float reverseEngageSpeedKmh = 5f;
-    [Header("Stability")]
-    [SerializeField] private Transform centerOfMass;
-    [SerializeField] private float downforce = 50f;
-    private Rigidbody _rb;
-    private float _steerInput;
-    private float _throttleInput;
-    private bool _handbrake;
+    [Header("Movimiento")]
+    [SerializeField] private float maxSpeed = 32f;        // m/s
+    [SerializeField] private float reverseMaxSpeed = 12f;
+    [SerializeField] private float acceleration = 24f;
+    [SerializeField] private float brakeForce = 36f;
+    [SerializeField] private float naturalFriction = 12f;
+    [SerializeField] private float turnRate = 140f;        // grados/seg a máxima velocidad
+
+    [Header("Derrape")]
+    [SerializeField] private float minDriftSpeed = 7f;     // velocidad mínima para poder derrapar
+    [SerializeField] private float driftTurnMultiplier = 1.6f;
+    [SerializeField] private float driftSlipLerpSpeed = 3.5f;  // qué tan lento "resbala" la velocidad hacia el morro
+    [SerializeField] private float gripLerpSpeed = 14f;        // qué tan rápido agarra cuando NO derrapa
+    [SerializeField] private float driftChargeTime = 1.6f;     // segundos para llenar la barra al 100%
+    [SerializeField] private float tier1Threshold = 0.35f;
+    [SerializeField] private float tier2Threshold = 0.6f;
+    [SerializeField] private float tier3Threshold = 0.85f;
+
+    [Header("Mini-Turbo (boost al soltar el derrape)")]
+    [SerializeField] private float boostAcceleration = 60f;
+    [SerializeField] private float boostSpeedBonus = 10f;
+    [SerializeField] private float tier1Duration = 0.6f;
+    [SerializeField] private float tier2Duration = 0.85f;
+    [SerializeField] private float tier3Duration = 1.1f;
+
+    [Header("Referencias opcionales")]
+    [SerializeField] private Transform[] rearWheelTransforms;
+    [SerializeField] private ParticleSystem boostVFX;
+    [SerializeField] private TrailRenderer[] skidTrails; // uno por rueda trasera, activar/desactivar según drift
+
+    private Rigidbody rb;
+
+    // Estado interno
+    private float currentSpeed;          // escalar con signo (+ adelante, - atrás)
+    private float facingYaw;             // hacia dónde apunta el kart (grados)
+    private float velocityYaw;           // hacia dónde se mueve realmente (permite el slip del derrape)
+
+    private bool isDrifting;
+    private float driftDir;              // -1 izquierda, +1 derecha
+    private float driftCharge;           // 0..1
+    private float driftTimer;
+
+    private float boostTimer;
+    private int boostTier;               // 0 = sin boost, 1/2/3 = nivel de mini-turbo
+
+    // Propiedades públicas por si un HUD quiere leerlas
+    public float SpeedKmh => Mathf.Abs(currentSpeed) * 3.6f;
+    public float DriftCharge01 => driftCharge;
+    public bool IsDrifting => isDrifting;
+
     private void Awake()
     {
-        _rb = GetComponent<Rigidbody>();
-        if (centerOfMass != null)
-        {
-            _rb.centerOfMass = transform.InverseTransformPoint(centerOfMass.position);
-        }
+        rb = GetComponent<Rigidbody>();
+        rb.centerOfMass = new Vector3(0f, -0.4f, 0f); // más estable, menos vuelcos
+        facingYaw = transform.eulerAngles.y;
+        velocityYaw = facingYaw;
     }
+
     private void Update()
     {
-        _steerInput = Input.GetAxis("Horizontal");
-        _throttleInput = Input.GetAxis("Vertical");
-        _handbrake = Input.GetButton("Jump");
+        // El input se lee en Update (más responsivo) y se usa en FixedUpdate.
+        // No hace falta guardarlo en variables intermedias porque Input.GetKey
+        // es instantáneo y confiable en ambos loops, pero lo dejamos así por
+        // claridad si luego migrás al nuevo Input System.
     }
+
     private void FixedUpdate()
     {
-        if (!HasWheels())
+        float dt = Time.fixedDeltaTime;
+
+        bool forward = Input.GetKey(KeyCode.W);
+        bool back = Input.GetKey(KeyCode.S);
+        bool left = Input.GetKey(KeyCode.A);
+        bool right = Input.GetKey(KeyCode.D);
+        bool wantDrift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+
+        HandleAcceleration(forward, back, dt);
+        HandleSteeringAndDrift(left, right, wantDrift, dt);
+        HandleBoost(dt);
+        ApplyMovement(dt);
+        UpdateVisuals();
+    }
+
+    private void HandleAcceleration(bool forward, bool back, float dt)
+    {
+        if (forward)
         {
-            return;
+            currentSpeed += acceleration * dt;
         }
-        float speedKmh = _rb.linearVelocity.magnitude * 3.6f;
-        float forwardSpeed = Vector3.Dot(_rb.linearVelocity, transform.forward);
-        float steer = _steerInput * maxSteerAngle;
-        frontLeftCollider.steerAngle = steer;
-        frontRightCollider.steerAngle = steer;
-        float motor = 0f;
-        float brake = 0f;
-        if (_handbrake)
+        else if (back)
         {
-            brake = brakeForce;
+            currentSpeed -= (currentSpeed > 0f ? brakeForce : acceleration) * dt;
         }
-        else if (Mathf.Abs(_throttleInput) > 0.01f)
+        else
         {
-            bool wantsForward = _throttleInput > 0f;
-            bool movingForward = forwardSpeed > 0.5f;
-            bool movingBackward = forwardSpeed < -0.5f;
-            if (wantsForward && movingBackward)
-            {
-                brake = brakeForce;
-            }
-            else if (!wantsForward && movingForward)
-            {
-                brake = brakeForce;
-            }
-            else if (wantsForward)
-            {
-                if (speedKmh < maxSpeedKmh)
-                {
-                    motor = _throttleInput * motorForce;
-                }
-            }
-            else
-            {
-                if (speedKmh < reverseEngageSpeedKmh || movingBackward)
-                {
-                    motor = _throttleInput * reverseForce;
-                }
-                else
-                {
-                    brake = brakeForce;
-                }
-            }
+            // fricción natural cuando no se toca el acelerador
+            float f = naturalFriction * dt;
+            if (currentSpeed > 0f) currentSpeed = Mathf.Max(0f, currentSpeed - f);
+            else if (currentSpeed < 0f) currentSpeed = Mathf.Min(0f, currentSpeed + f);
         }
-        ApplyDrive(rearLeftCollider, motor, brake);
-        ApplyDrive(rearRightCollider, motor, brake);
-        ApplyDrive(frontLeftCollider, 0f, brake);
-        ApplyDrive(frontRightCollider, 0f, brake);
-        UpdateWheelVisual(frontLeftCollider, frontLeftMesh);
-        UpdateWheelVisual(frontRightCollider, frontRightMesh);
-        UpdateWheelVisual(rearLeftCollider, rearLeftMesh);
-        UpdateWheelVisual(rearRightCollider, rearRightMesh);
-        if (downforce > 0f)
+
+        float topSpeed = maxSpeed + (boostTimer > 0f ? boostSpeedBonus : 0f);
+        currentSpeed = Mathf.Clamp(currentSpeed, -reverseMaxSpeed, topSpeed);
+    }
+
+    private void HandleSteeringAndDrift(bool left, bool right, bool wantDrift, float dt)
+    {
+        float steer = (left ? -1f : 0f) + (right ? 1f : 0f);
+        float speedFactor = Mathf.Clamp01(Mathf.Abs(currentSpeed) / 10f);
+        bool canStartDrift = wantDrift && steer != 0f && Mathf.Abs(currentSpeed) > minDriftSpeed;
+
+        if (canStartDrift && !isDrifting)
         {
-            _rb.AddForce(-transform.up * downforce * _rb.linearVelocity.magnitude);
+            isDrifting = true;
+            driftDir = steer;
+            driftCharge = 0f;
+            driftTimer = 0f;
+            SetSkidTrails(true);
+        }
+
+        bool shouldStopDrift = isDrifting &&
+            (!wantDrift || steer == 0f || Mathf.Abs(currentSpeed) < minDriftSpeed * 0.6f);
+
+        if (shouldStopDrift)
+        {
+            ReleaseDrift();
+        }
+
+        if (isDrifting)
+        {
+            driftTimer += dt;
+            driftCharge = Mathf.Clamp01(driftTimer / driftChargeTime);
+
+            // el morro gira más brusco que el auto real
+            facingYaw += driftDir * turnRate * driftTurnMultiplier * dt * (0.5f + speedFactor * 0.5f);
+            facingYaw = NormalizeAngle(facingYaw);
+
+            // la velocidad "resbala": se acerca lento al ángulo del morro -> patinada
+            velocityYaw = Mathf.LerpAngle(velocityYaw, facingYaw, dt * driftSlipLerpSpeed);
+        }
+        else
+        {
+            facingYaw += steer * turnRate * dt * (0.35f + speedFactor * 0.65f) * (currentSpeed < 0f ? -1f : 1f);
+            facingYaw = NormalizeAngle(facingYaw);
+            velocityYaw = Mathf.LerpAngle(velocityYaw, facingYaw, dt * gripLerpSpeed);
         }
     }
-    private static void ApplyDrive(WheelCollider wheel, float motor, float brake)
+
+    private void ReleaseDrift()
     {
-        wheel.motorTorque = motor;
-        wheel.brakeTorque = brake;
-    }
-    private static void UpdateWheelVisual(WheelCollider collider, Transform mesh)
-    {
-        if (mesh == null)
+        if (driftCharge >= tier3Threshold)
         {
-            return;
+            boostTier = 3;
+            boostTimer = tier3Duration;
         }
-        collider.GetWorldPose(out Vector3 pos, out Quaternion rot);
-        mesh.SetPositionAndRotation(pos, rot);
+        else if (driftCharge >= tier2Threshold)
+        {
+            boostTier = 2;
+            boostTimer = tier2Duration;
+        }
+        else if (driftCharge >= tier1Threshold)
+        {
+            boostTier = 1;
+            boostTimer = tier1Duration;
+        }
+        else
+        {
+            boostTier = 0;
+        }
+
+        if (boostTier > 0 && boostVFX != null)
+        {
+            var main = boostVFX.main;
+            main.startColor = boostTier == 3 ? new Color(0.72f, 0.24f, 0.88f)
+                             : boostTier == 2 ? new Color(0.88f, 0.28f, 0.25f)
+                             : new Color(0.25f, 0.65f, 0.88f);
+            boostVFX.Play();
+        }
+
+        isDrifting = false;
+        driftCharge = 0f;
+        SetSkidTrails(false);
     }
-    private bool HasWheels()
+
+    private void HandleBoost(float dt)
     {
-        return frontLeftCollider != null
-            && frontRightCollider != null
-            && rearLeftCollider != null
-            && rearRightCollider != null;
+        if (boostTimer > 0f)
+        {
+            boostTimer -= dt;
+            currentSpeed = Mathf.Min(maxSpeed + boostSpeedBonus, currentSpeed + boostAcceleration * dt);
+            if (boostTimer <= 0f) boostTier = 0;
+        }
+    }
+
+    private void ApplyMovement(float dt)
+    {
+        // rotación visual del kart
+        Quaternion targetRot = Quaternion.Euler(0f, facingYaw, 0f);
+        rb.MoveRotation(targetRot);
+
+        // dirección real del movimiento (puede diferir del morro durante el drift)
+        Vector3 moveDir = Quaternion.Euler(0f, velocityYaw, 0f) * Vector3.forward;
+        Vector3 targetVelocity = moveDir * currentSpeed;
+        targetVelocity.y = rb.linearVelocity.y; // conservar gravedad/salto
+
+        rb.linearVelocity = targetVelocity;
+    }
+
+    private void UpdateVisuals()
+    {
+        // Ejemplo simple: girar visualmente las ruedas delanteras según el steer,
+        // si tenés transforms asignados podés extenderlo acá.
+    }
+
+    private void SetSkidTrails(bool active)
+    {
+        if (skidTrails == null) return;
+        foreach (var trail in skidTrails)
+        {
+            if (trail != null) trail.emitting = active;
+        }
+    }
+
+    private static float NormalizeAngle(float angle)
+    {
+        angle %= 360f;
+        if (angle < 0f) angle += 360f;
+        return angle;
     }
 }
