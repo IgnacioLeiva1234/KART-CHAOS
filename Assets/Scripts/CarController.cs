@@ -19,7 +19,7 @@ using UnityEngine;
 ///    mini-turbo, y un AudioSource + clips si querés sonido de motor/derrape.
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
-public class CarController : MonoBehaviour
+public class KartController : MonoBehaviour
 {
     [Header("Movimiento")]
     [SerializeField] private float maxSpeed = 32f;        // m/s
@@ -33,7 +33,8 @@ public class CarController : MonoBehaviour
     [SerializeField] private float minDriftSpeed = 7f;     // velocidad mínima para poder derrapar
     [SerializeField] private float driftTurnMultiplier = 1.6f;
     [SerializeField] private float driftSlipLerpSpeed = 3.5f;  // qué tan lento "resbala" la velocidad hacia el morro
-    [SerializeField] private float gripLerpSpeed = 14f;        // qué tan rápido agarra cuando NO derrapa
+    [SerializeField] private float gripLerpSpeed = 14f;        // qué tan rápido agarra en agarre normal (fuera de drift)
+    [SerializeField] private float driftRecoveryTime = 0.5f;   // segundos que tarda en recuperar el agarre total después de soltar el drift
     [SerializeField] private float driftChargeTime = 1.6f;     // segundos para llenar la barra al 100%
     [SerializeField] private float tier1Threshold = 0.35f;
     [SerializeField] private float tier2Threshold = 0.6f;
@@ -62,6 +63,7 @@ public class CarController : MonoBehaviour
     private float driftDir;              // -1 izquierda, +1 derecha
     private float driftCharge;           // 0..1
     private float driftTimer;
+    private float driftRecoveryTimer;    // cuenta regresiva post-drift: cuánto falta para recuperar agarre total
 
     private float boostTimer;
     private int boostTier;               // 0 = sin boost, 1/2/3 = nivel de mini-turbo
@@ -165,7 +167,25 @@ public class CarController : MonoBehaviour
         {
             facingYaw += steer * turnRate * dt * (0.35f + speedFactor * 0.65f) * (currentSpeed < 0f ? -1f : 1f);
             facingYaw = NormalizeAngle(facingYaw);
-            velocityYaw = Mathf.LerpAngle(velocityYaw, facingYaw, dt * gripLerpSpeed);
+
+            // Justo después de soltar el drift, el agarre no vuelve de golpe:
+            // arranca tan "resbaladizo" como durante el drift y se va
+            // endureciendo hasta llegar al agarre normal (gripLerpSpeed) a
+            // lo largo de driftRecoveryTime. Esto hace que el kart siga un
+            // tramo la trayectoria que traía en vez de enderezarse en seco.
+            float effectiveGrip;
+            if (driftRecoveryTimer > 0f)
+            {
+                driftRecoveryTimer -= dt;
+                float t = 1f - Mathf.Clamp01(driftRecoveryTimer / driftRecoveryTime); // 0 = recién soltado, 1 = agarre total
+                effectiveGrip = Mathf.Lerp(driftSlipLerpSpeed, gripLerpSpeed, t);
+            }
+            else
+            {
+                effectiveGrip = gripLerpSpeed;
+            }
+
+            velocityYaw = Mathf.LerpAngle(velocityYaw, facingYaw, dt * effectiveGrip);
         }
     }
 
@@ -202,6 +222,7 @@ public class CarController : MonoBehaviour
 
         isDrifting = false;
         driftCharge = 0f;
+        driftRecoveryTimer = driftRecoveryTime;
         SetSkidTrails(false);
     }
 
