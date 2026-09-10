@@ -51,6 +51,7 @@ public class KartController : MonoBehaviour
     [SerializeField] private Transform[] rearWheelTransforms;
     [SerializeField] private ParticleSystem boostVFX;
     [SerializeField] private TrailRenderer[] skidTrails; // uno por rueda trasera, activar/desactivar según drift
+    [SerializeField] private ParticleSystem[] driftSparksVFX; // chispas continuas mientras derrapa (una por rueda trasera)
 
     private Rigidbody rb;
 
@@ -72,6 +73,9 @@ public class KartController : MonoBehaviour
     public float SpeedKmh => Mathf.Abs(currentSpeed) * 3.6f;
     public float DriftCharge01 => driftCharge;
     public bool IsDrifting => isDrifting;
+    public float Tier1Threshold => tier1Threshold;
+    public float Tier2Threshold => tier2Threshold;
+    public float Tier3Threshold => tier3Threshold;
 
     private void Awake()
     {
@@ -140,7 +144,7 @@ public class KartController : MonoBehaviour
             driftDir = steer;
             driftCharge = 0f;
             driftTimer = 0f;
-            SetSkidTrails(true);
+            SetDriftEffects(true);
         }
 
         bool shouldStopDrift = isDrifting &&
@@ -223,7 +227,7 @@ public class KartController : MonoBehaviour
         isDrifting = false;
         driftCharge = 0f;
         driftRecoveryTimer = driftRecoveryTime;
-        SetSkidTrails(false);
+        SetDriftEffects(false);
     }
 
     private void HandleBoost(float dt)
@@ -256,12 +260,24 @@ public class KartController : MonoBehaviour
         // si tenés transforms asignados podés extenderlo acá.
     }
 
-    private void SetSkidTrails(bool active)
+    private void SetDriftEffects(bool active)
     {
-        if (skidTrails == null) return;
-        foreach (var trail in skidTrails)
+        if (skidTrails != null)
         {
-            if (trail != null) trail.emitting = active;
+            foreach (var trail in skidTrails)
+            {
+                if (trail != null) trail.emitting = active;
+            }
+        }
+
+        if (driftSparksVFX != null)
+        {
+            foreach (var sparks in driftSparksVFX)
+            {
+                if (sparks == null) continue;
+                if (active) sparks.Play();
+                else sparks.Stop(true, ParticleSystemStopBehavior.StopEmitting); // deja de emitir pero las chispas ya lanzadas terminan su vida naturalmente
+            }
         }
     }
 
