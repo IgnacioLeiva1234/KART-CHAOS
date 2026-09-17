@@ -176,7 +176,7 @@ public class KartController : MonoBehaviour
         {
             ReleaseDrift();
         }
-
+         Debug.Log("TURBO ACTIVADO - Tier: " + boostTier + " | Carga: " + driftCharge);
         if (isDrifting)
         {
             driftTimer += dt;
