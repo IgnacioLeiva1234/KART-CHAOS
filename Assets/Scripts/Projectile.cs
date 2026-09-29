@@ -58,17 +58,36 @@ public class Projectile : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        HandleHit(other.gameObject);
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        // Respaldo: si el collider del proyectil o del objetivo NO está
+        // marcado como Trigger, Unity llama a esta función en vez de
+        // OnTriggerEnter. Así el impacto se detecta de las dos formas,
+        // sin depender de que ese checkbox esté bien configurado.
+        HandleHit(collision.gameObject);
+    }
+
+    private void HandleHit(GameObject hit)
+    {
         // No impactar contra quien lo disparó.
-        if (owner != null && (other.gameObject == owner || other.transform.IsChildOf(owner.transform)))
+        if (owner != null && (hit == owner || hit.transform.IsChildOf(owner.transform)))
             return;
 
         // Ignorar otros proyectiles entre sí.
-        if (other.GetComponent<Projectile>() != null)
+        if (hit.GetComponent<Projectile>() != null)
             return;
 
-        // Acá enganchás tu sistema de vida/daño si lo tenés, por ejemplo:
-        // var health = other.GetComponentInParent<KartHealth>();
-        // if (health != null) health.TakeDamage(damage);
+        Debug.Log("Proyectil impactó contra: " + hit.name); // podés borrar esta línea después
+
+        // Aplicar daño si el objeto golpeado (o su padre) tiene KartHealth.
+        var health = hit.GetComponentInParent<KartHealth>();
+        if (health != null)
+        {
+            health.TakeDamage(damage, owner);
+        }
 
         if (impactVFXPrefab != null)
         {
