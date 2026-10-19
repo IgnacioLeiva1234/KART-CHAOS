@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 public class PickUp : MonoBehaviour
 {
@@ -12,5 +13,13 @@ public class PickUp : MonoBehaviour
     void Update()
     {
         
+    }
+
+    void OnCollisionEnter (Collision col)
+    {
+        if (col.gameObject.CompareTag ("Pickable"))
+        {
+            GameObject RandomPowerUp =
+        }
     }
 }
