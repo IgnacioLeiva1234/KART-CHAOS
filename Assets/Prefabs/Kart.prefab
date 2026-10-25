@@ -20156,6 +20156,7 @@ GameObject:
   - component: {fileID: 5070424375297389088}
   - component: {fileID: 84272867969204150}
   - component: {fileID: 4599464158291764640}
+  - component: {fileID: 7190637310819445452}
   m_Layer: 0
   m_Name: Kart
   m_TagString: Untagged
@@ -20392,6 +20393,28 @@ MonoBehaviour:
   deathVFXPrefab: {fileID: 0}
   hitVFXPrefab: {fileID: 0}
   currentHealth: 0
+--- !u!64 &7190637310819445452
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9109727662923824195}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 1
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 0}
 --- !u!1001 &2801766530138760299
 PrefabInstance:
   m_ObjectHideFlags: 0
