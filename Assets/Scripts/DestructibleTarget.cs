@@ -1,44 +1,45 @@
+
 using System;
 using UnityEngine;
 
 /// <summary>
-/// Le hacen falta VARIOS impactos (no uno solo) para destruirlo. Expone
-/// eventos para que una barra de vida (como KartHealthBarWorld.cs) se
-/// actualice sola cada vez que recibe un golpe.
-///
-/// SETUP:
-/// 1. Poné este componente en CADA kart del juego (el tuyo y los de los
-///    demás jugadores), para que todos puedan recibir y hacer daño por igual.
-/// 2. Confirmá que el kart tenga un Collider (el que sea). No hace falta
-///    que sea Trigger, este script detecta ambos casos.
-/// 3. Add Component > "Destructible Target".
-/// 4. Ajustá "Hits To Destroy" al número de impactos que querés (default 7).
+/// Gestiona los impactos que recibe un kart y avisa a la barra de vida.
+/// También permite registrar impactos desde otras armas, como las minas.
 /// </summary>
 public class DestructibleTarget : MonoBehaviour
 {
     [Header("Vida por impactos")]
-    [Tooltip("Cuántos disparos hacen falta para destruirlo.")]
+    [Tooltip("Cantidad de impactos necesarios para destruir el kart.")]
     [SerializeField] private int hitsToDestroy = 7;
-    [Tooltip("Segundos de invulnerabilidad tras cada golpe, para que dos proyectiles del mismo instante no cuenten como dos hits.")]
+
+    [Tooltip("Tiempo de invulnerabilidad después de cada impacto.")]
     [SerializeField] private float invulnerabilityAfterHit = 0.15f;
 
     [Header("Feedback (opcional)")]
-    [SerializeField] private GameObject hitVFXPrefab;     // chispazo chico en cada golpe (no en la destrucción final)
-    [SerializeField] private GameObject destroyVFXPrefab; // explosión grande al llegar a 0
+    [SerializeField] private GameObject hitVFXPrefab;
+    [SerializeField] private GameObject destroyVFXPrefab;
 
     private int hitsTaken;
     private float invulnerabilityTimer;
+    private bool isDestroyed;
 
-    /// <summary>current = hits que le quedan por aguantar, max = hitsToDestroy. Para que la UI se dibuje.</summary>
     public event Action<int, int> OnHitsChanged;
     public event Action OnDestroyed;
 
-    public int HitsRemaining => Mathf.Max(0, hitsToDestroy - hitsTaken);
+    public int HitsRemaining =>
+        Mathf.Max(0, hitsToDestroy - hitsTaken);
+
     public int MaxHits => hitsToDestroy;
+
+    // Raíz del kart al que pertenece este componente.
+    public Transform KartRoot => transform.root;
 
     private void Update()
     {
-        if (invulnerabilityTimer > 0f) invulnerabilityTimer -= Time.deltaTime;
+        if (invulnerabilityTimer > 0f)
+        {
+            invulnerabilityTimer -= Time.deltaTime;
+        }
     }
 
     private void OnTriggerEnter(Collider other)
@@ -53,32 +54,65 @@ public class DestructibleTarget : MonoBehaviour
 
     private void TryHandleHit(GameObject hitBy)
     {
-        if (invulnerabilityTimer > 0f) return;
+        if (isDestroyed || invulnerabilityTimer > 0f)
+            return;
 
-        // Solo reacciona si lo que lo tocó es un proyectil.
-        Projectile proj = hitBy.GetComponent<Projectile>();
-        if (proj == null) return;
+        // Busca el proyectil en el objeto que chocó o en sus padres.
+        Projectile projectile =
+            hitBy.GetComponentInParent<Projectile>();
+
+        if (projectile == null)
+            return;
+
+        RegisterHit();
+    }
+
+    /// <summary>
+    /// Registra un impacto desde un proyectil, una mina u otra arma.
+    /// </summary>
+    public void RegisterHit()
+    {
+        if (isDestroyed || invulnerabilityTimer > 0f)
+            return;
 
         hitsTaken++;
         invulnerabilityTimer = invulnerabilityAfterHit;
 
+        // Actualiza la barra de vida.
         OnHitsChanged?.Invoke(HitsRemaining, hitsToDestroy);
+
+        Debug.Log(
+            $"{KartRoot.name} recibió un impacto. " +
+            $"Vida: {HitsRemaining}/{hitsToDestroy}"
+        );
 
         if (hitVFXPrefab != null)
         {
-            Instantiate(hitVFXPrefab, transform.position, Quaternion.identity);
+            Instantiate(
+                hitVFXPrefab,
+                transform.position,
+                Quaternion.identity
+            );
         }
 
-        if (hitsTaken >= hitsToDestroy)
+        if (HitsRemaining <= 0)
         {
+            isDestroyed = true;
+
+            // Avisa a la barra antes de destruir el kart.
             OnDestroyed?.Invoke();
 
             if (destroyVFXPrefab != null)
             {
-                Instantiate(destroyVFXPrefab, transform.position, Quaternion.identity);
+                Instantiate(
+                    destroyVFXPrefab,
+                    transform.position,
+                    Quaternion.identity
+                );
             }
 
-            Destroy(gameObject);
+            // Destruye el kart completo, no solo este componente auxiliar.
+            Destroy(KartRoot.gameObject);
         }
     }
 }
