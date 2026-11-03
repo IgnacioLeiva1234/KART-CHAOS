@@ -1,52 +1,72 @@
-
-using System.Collections;
 using UnityEngine;
 
-public class KartMine : MonoBehaviour
+/// <summary>
+/// Power-up Mina: coloca una mina terrestre en el piso, detrás del kart.
+/// Reemplaza al viejo KartMineLayer.
+///
+/// SETUP (en la raíz del kart):
+///  1. Add Component > "Mine Power Up".
+///  2. Mine Prefab: el prefab de la mina (el que tiene LandMine).
+/// </summary>
+public class MinePowerUp : KartPowerUp
 {
-    [SerializeField] private float armingDelay = 1f;
-    [SerializeField] private float lifetime = 20f;
+    [Header("Mina")]
+    [SerializeField] private GameObject minePrefab;
+    [Tooltip("Qué tan atrás del kart cae la mina.")]
+    [SerializeField] private float distanceBehind = 3f;
+    [SerializeField] private float placeCooldown = 0.4f;
 
-    private Transform owner;
-    private bool armed;
-    private bool exploded;
+    [Header("Feedback (opcional)")]
+    [SerializeField] private AudioSource audioSource;
+    [SerializeField] private AudioClip placeSound;
 
-    public void SetOwner(Transform kartOwner)
+    public override PowerUpType Type => PowerUpType.Mine;
+    public override string DisplayName => "Mina";
+
+    public override bool Use(GameObject owner)
     {
-        owner = kartOwner;
-        StartCoroutine(ArmMine());
+        if (OnCooldown) return false;
+
+        if (minePrefab == null)
+        {
+            Debug.LogWarning("MinePowerUp: falta asignar el Mine Prefab en el Inspector.");
+            return false;
+        }
+
+        Vector3 pos = GetGroundPositionBehind(owner.transform);
+        GameObject mine = Instantiate(minePrefab, pos, Quaternion.identity);
+
+        LandMine landMine = mine.GetComponent<LandMine>();
+        if (landMine != null) landMine.SetOwner(owner);
+
+        StartCooldown(placeCooldown);
+
+        if (audioSource != null && placeSound != null) audioSource.PlayOneShot(placeSound);
+        return true;
     }
 
-    private IEnumerator ArmMine()
+    // Punto detrás del kart, apoyado sobre el piso.
+    private Vector3 GetGroundPositionBehind(Transform kart)
     {
-        yield return new WaitForSeconds(armingDelay);
-        armed = true;
-    }
+        Vector3 back = -kart.forward;
+        back.y = 0f;
+        back.Normalize();
 
-    private void Start()
-    {
-        Destroy(gameObject, lifetime);
-    }
+        Vector3 pos = kart.position + back * distanceBehind;
+        Vector3 origin = pos + Vector3.up * 3f;
 
-    private void OnTriggerEnter(Collider other)
-    {
-        if (!armed || exploded)
-            return;
-
-        DestructibleTarget target =
-            other.GetComponentInParent<DestructibleTarget>();
-
-        if (target == null)
-            return;
-
-        if (owner != null &&
-            target.transform.root == owner.root)
-            return;
-
-        exploded = true;
-        target.RegisterHit();
-
-        Debug.Log($"¡La mina golpeó a {target.transform.root.name}!");
-        Destroy(gameObject);
+        // Rayo hacia abajo; nos quedamos con el primer golpe que NO sea parte del kart.
+        RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, 12f, ~0, QueryTriggerInteraction.Ignore);
+        float best = float.MaxValue;
+        foreach (var h in hits)
+        {
+            if (h.transform.IsChildOf(kart)) continue;
+            if (h.distance < best)
+            {
+                best = h.distance;
+                pos = h.point;
+            }
+        }
+        return pos;
     }
 }

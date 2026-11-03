@@ -176,7 +176,7 @@ public class KartController : MonoBehaviour
         {
             ReleaseDrift();
         }
-         Debug.Log("TURBO ACTIVADO - Tier: " + boostTier + " | Carga: " + driftCharge);
+
         if (isDrifting)
         {
             driftTimer += dt;
@@ -337,6 +337,28 @@ public class KartController : MonoBehaviour
                 else sparks.Stop(true, ParticleSystemStopBehavior.StopEmitting); // deja de emitir pero las chispas ya lanzadas terminan su vida naturalmente
             }
         }
+    }
+
+    // Lo llama DestructibleTarget al reaparecer el kart (vía SendMessage).
+    // Sin esto, el kart conservaría la velocidad y el ángulo de antes de morir
+    // y saldría girando o disparado al aparecer en el RespawnPoint.
+    private void OnRespawned()
+    {
+        currentSpeed = 0f;
+        facingYaw = transform.eulerAngles.y;
+        velocityYaw = facingYaw;
+
+        isDrifting = false;
+        driftCharge = 0f;
+        driftTimer = 0f;
+        driftRecoveryTimer = 0f;
+
+        boostTimer = 0f;
+        boostTier = 0;
+        overspeed = 0f;
+        boostTotalDuration = 0f;
+
+        SetDriftEffects(false);
     }
 
     private static float NormalizeAngle(float angle)
