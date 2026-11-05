@@ -119,50 +119,6 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &75532693
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 75532695}
-  - component: {fileID: 75532694}
-  m_Layer: 0
-  m_Name: RespawnPoint (2)
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &75532694
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 75532693}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0663f29663a2df34fbcaad3e4006e0e6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: '::'
---- !u!4 &75532695
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 75532693}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 12.89, y: 1.85, z: 36.38}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &91686310 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -7317760819968036620, guid: 1372ab4ef0e66084fbdd0ba428b785f8, type: 3}
@@ -909,7 +865,7 @@ Transform:
   m_GameObject: {fileID: 549887436}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: -12.35, y: 14.57, z: 111.98}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -926,7 +882,13 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 15515577abd57034982dc7fe1dc69727, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: '::'
+  m_EditorClassIdentifier: Assembly-CSharp::SpawnPlayers
+  playerPrefab: {fileID: 4421729070721252579, guid: 58f138ae24c691e45b8c4603adcb488b, type: 3}
+  minX: -12.35
+  maxX: 1
+  fixedValueY: 1
+  minZ: 0
+  maxZ: 0
 --- !u!1 &560740727
 GameObject:
   m_ObjectHideFlags: 0
@@ -2265,50 +2227,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f2d624de1a6688247b2fe3902d6d0e03, type: 3}
---- !u!1 &1487485703
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1487485705}
-  - component: {fileID: 1487485704}
-  m_Layer: 0
-  m_Name: RespawnPoint (3)
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1487485704
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1487485703}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0663f29663a2df34fbcaad3e4006e0e6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: '::'
---- !u!4 &1487485705
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1487485703}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 10.97, y: 1.85, z: 36.08}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1570779377
 GameObject:
   m_ObjectHideFlags: 0
@@ -3340,6 +3258,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Auto.4.2
       objectReference: {fileID: 0}
+    - target: {fileID: 4421729070721252579, guid: 58f138ae24c691e45b8c4603adcb488b, type: 3}
+      propertyPath: m_TagString
+      value: Player
+      objectReference: {fileID: 0}
     - target: {fileID: 6159308892517795836, guid: 58f138ae24c691e45b8c4603adcb488b, type: 3}
       propertyPath: sceneViewId
       value: 1
@@ -3507,7 +3429,5 @@ SceneRoots:
   - {fileID: 549887437}
   - {fileID: 1896874745}
   - {fileID: 966367421}
-  - {fileID: 75532695}
   - {fileID: 1158599823}
-  - {fileID: 1487485705}
   - {fileID: 810810156}
