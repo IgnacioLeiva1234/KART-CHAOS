@@ -1,4 +1,5 @@
 using UnityEngine;
+using Photon.Pun;
 
 /// <summary>
 /// Controlador de kart estilo arcade para Unity 6.
@@ -64,6 +65,7 @@ public class KartController : MonoBehaviour
     [SerializeField] private ParticleSystem[] driftSparksVFX; // chispas continuas mientras derrapa (una por rueda trasera)
 
     private Rigidbody rb;
+    private PhotonView view;
 
     // Estado interno
     private float currentSpeed;          // escalar con signo (+ adelante, - atrás)
@@ -98,6 +100,7 @@ public class KartController : MonoBehaviour
 
     private void Awake()
     {
+        view = GetComponent <PhotonView>();
         rb = GetComponent<Rigidbody>();
         rb.centerOfMass = new Vector3(0f, -0.4f, 0f); // más estable, menos vuelcos
         facingYaw = transform.eulerAngles.y;
@@ -114,19 +117,22 @@ public class KartController : MonoBehaviour
 
     private void FixedUpdate()
     {
-        float dt = Time.fixedDeltaTime;
+        if (view.IsMine)
+        {
+            float dt = Time.fixedDeltaTime;
 
-        bool forward = Input.GetKey(KeyCode.W);
-        bool back = Input.GetKey(KeyCode.S);
-        bool left = Input.GetKey(KeyCode.A);
-        bool right = Input.GetKey(KeyCode.D);
-        bool wantDrift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            bool forward = Input.GetKey(KeyCode.W);
+            bool back = Input.GetKey(KeyCode.S);
+            bool left = Input.GetKey(KeyCode.A);
+            bool right = Input.GetKey(KeyCode.D);
+            bool wantDrift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 
-        HandleAcceleration(forward, back, dt);
-        HandleSteeringAndDrift(left, right, wantDrift, dt);
-        HandleBoost(dt);
-        ApplyMovement(dt);
-        UpdateVisuals();
+            HandleAcceleration(forward, back, dt);
+            HandleSteeringAndDrift(left, right, wantDrift, dt);
+            HandleBoost(dt);
+            ApplyMovement(dt);
+            UpdateVisuals();
+        }
     }
 
     private void HandleAcceleration(bool forward, bool back, float dt)
