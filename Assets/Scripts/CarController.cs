@@ -20,6 +20,7 @@ using Photon.Pun;
 ///    mini-turbo, y un AudioSource + clips si querés sonido de motor/derrape.
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
+[RequireComponent (typeof(PhotonView))]
 public class KartController : MonoBehaviour
 {
     [Header("Movimiento")]
@@ -100,7 +101,14 @@ public class KartController : MonoBehaviour
 
     private void Awake()
     {
-        view = GetComponent <PhotonView>();
+        view = GetComponent<PhotonView>();
+        Debug.Log(
+    "Auto: " + gameObject.name +
+    " | ViewID: " + view.ViewID +
+    " | IsMine: " + view.IsMine +
+    " | Owner: " + view.OwnerActorNr +
+    " | LocalPlayer: " + PhotonNetwork.LocalPlayer.ActorNumber
+);
         rb = GetComponent<Rigidbody>();
         rb.centerOfMass = new Vector3(0f, -0.4f, 0f); // más estable, menos vuelcos
         facingYaw = transform.eulerAngles.y;
@@ -117,22 +125,24 @@ public class KartController : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (view.IsMine)
-        {
-            float dt = Time.fixedDeltaTime;
+        if (!view.IsMine)
+        return;
 
-            bool forward = Input.GetKey(KeyCode.W);
-            bool back = Input.GetKey(KeyCode.S);
-            bool left = Input.GetKey(KeyCode.A);
-            bool right = Input.GetKey(KeyCode.D);
-            bool wantDrift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+        float dt = Time.fixedDeltaTime;
 
-            HandleAcceleration(forward, back, dt);
-            HandleSteeringAndDrift(left, right, wantDrift, dt);
-            HandleBoost(dt);
-            ApplyMovement(dt);
-            UpdateVisuals();
-        }
+        bool forward = Input.GetKey(KeyCode.W);
+        bool back = Input.GetKey(KeyCode.S);
+        bool left = Input.GetKey(KeyCode.A);
+        bool right = Input.GetKey(KeyCode.D);
+
+        bool wantDrift = Input.GetKey(KeyCode.LeftShift) ||
+                     Input.GetKey(KeyCode.RightShift);
+
+        HandleAcceleration(forward, back, dt);
+        HandleSteeringAndDrift(left, right, wantDrift, dt);
+        HandleBoost(dt);
+        ApplyMovement(dt);
+        UpdateVisuals();
     }
 
     private void HandleAcceleration(bool forward, bool back, float dt)

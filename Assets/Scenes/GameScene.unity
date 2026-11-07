@@ -883,15 +883,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 15515577abd57034982dc7fe1dc69727, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpawnPlayers
-  playerPrefab: {fileID: 4421729070721252579, guid: 58f138ae24c691e45b8c4603adcb488b, type: 3}
   projectPrefabs:
   - {fileID: 4421729070721252579, guid: 58f138ae24c691e45b8c4603adcb488b, type: 3}
+  - {fileID: 4421729070721252579, guid: 58f138ae24c691e45b8c4603adcb488b, type: 3}
   players: []
-  minX: -3
-  maxX: -8
+  minX: -8
+  maxX: -3
   fixedValueY: 0.16
-  minZ: 43
-  maxZ: 49
+  minZ: 49
+  maxZ: 43
 --- !u!1 &560740727
 GameObject:
   m_ObjectHideFlags: 0

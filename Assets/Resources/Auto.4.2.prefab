@@ -20412,6 +20412,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 80782fc27b34bec429b596ebc285e5c6, type: 3}
       insertIndex: -1
       addedObject: {fileID: 6159308892517795836}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 80782fc27b34bec429b596ebc285e5c6, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3024556193429173338}
     - targetCorrespondingSourceObject: {fileID: -516098083770646512, guid: 80782fc27b34bec429b596ebc285e5c6, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5297451466535533411}
@@ -20786,18 +20789,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 4421729070721252579}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2ae1318c1a3315740a790d82f025c62a, type: 3}
+  m_Script: {fileID: 11500000, guid: fe7d10dfe0e8dbe4f8264c285712c200, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KartPowerUpController
-  cannonFirePoint: {fileID: 6863160648674990068}
-  mineDropPoint: {fileID: 159673770433970560}
-  cannonProjectilePrefab: {fileID: 8687242262926934793, guid: 7809ead0469fc25408d93ed7094ab687, type: 3}
-  minePrefab: {fileID: 919132149155446097, guid: 716f47046e961b2489841b007a9ffbec, type: 3}
-  cannonKey: 32
-  mineKey: 32
-  cannonSpeed: 35
-  maxCannonAmmo: 3
-  maxMines: 3
+  useKey: 32
+  startingPowerUp: 0
+  startingAmmo: 5
+  showDebugLabel: 1
+  currentType: 0
+  ammo: 0
 --- !u!114 &6159308892517795836
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20820,6 +20820,22 @@ MonoBehaviour:
   sceneViewId: 0
   InstantiationId: 0
   isRuntimeInstantiated: 0
+--- !u!114 &3024556193429173338
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4421729070721252579}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 627855c7f81362d41938ffe0b1475957, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PhotonUnityNetworking::Photon.Pun.PhotonTransformView
+  m_SynchronizePosition: 1
+  m_SynchronizeRotation: 1
+  m_SynchronizeScale: 0
+  m_UseLocal: 1
 --- !u!1 &5281096728701944226 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -516098083770646512, guid: 80782fc27b34bec429b596ebc285e5c6, type: 3}

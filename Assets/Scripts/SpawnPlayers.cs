@@ -33,12 +33,11 @@ public class SpawnPlayers : MonoBehaviour
 
                 players.Add (clonCreado);
                 StartCoroutine (SpawnDelay());
-                players.Add (clonCreado);
 
                 IEnumerator SpawnDelay(float WaitTime = 0.0111f)
                 {
                     yield return new WaitForSeconds (WaitTime);
-                }
+                }   
             }
         }
     }
