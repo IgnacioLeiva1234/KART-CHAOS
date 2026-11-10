@@ -20414,7 +20414,7 @@ PrefabInstance:
       addedObject: {fileID: 6159308892517795836}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 80782fc27b34bec429b596ebc285e5c6, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 3024556193429173338}
+      addedObject: {fileID: 8238689516888820925}
     - targetCorrespondingSourceObject: {fileID: -516098083770646512, guid: 80782fc27b34bec429b596ebc285e5c6, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5297451466535533411}
@@ -20816,11 +20816,12 @@ MonoBehaviour:
   Synchronization: 3
   OwnershipTransfer: 0
   observableSearch: 2
-  ObservedComponents: []
+  ObservedComponents:
+  - {fileID: 8238689516888820925}
   sceneViewId: 0
   InstantiationId: 0
   isRuntimeInstantiated: 0
---- !u!114 &3024556193429173338
+--- !u!114 &8238689516888820925
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -20829,13 +20830,30 @@ MonoBehaviour:
   m_GameObject: {fileID: 4421729070721252579}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 627855c7f81362d41938ffe0b1475957, type: 3}
+  m_Script: {fileID: 11500000, guid: 8efc6b1d64977384eb3405357896c656, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: PhotonUnityNetworking::Photon.Pun.PhotonTransformView
-  m_SynchronizePosition: 1
-  m_SynchronizeRotation: 1
-  m_SynchronizeScale: 0
-  m_UseLocal: 1
+  m_EditorClassIdentifier: PhotonUnityNetworking::Photon.Pun.PhotonTransformViewClassic
+  m_PositionModel:
+    SynchronizeEnabled: 1
+    TeleportEnabled: 1
+    TeleportIfDistanceGreaterThan: 3
+    InterpolateOption: 2
+    InterpolateMoveTowardsSpeed: 1
+    InterpolateLerpSpeed: 1
+    ExtrapolateOption: 0
+    ExtrapolateSpeed: 1
+    ExtrapolateIncludingRoundTripTime: 1
+    ExtrapolateNumberOfStoredPositions: 1
+  m_RotationModel:
+    SynchronizeEnabled: 1
+    InterpolateOption: 1
+    InterpolateRotateTowardsSpeed: 180
+    InterpolateLerpSpeed: 5
+  m_ScaleModel:
+    SynchronizeEnabled: 0
+    InterpolateOption: 0
+    InterpolateMoveTowardsSpeed: 1
+    InterpolateLerpSpeed: 0
 --- !u!1 &5281096728701944226 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -516098083770646512, guid: 80782fc27b34bec429b596ebc285e5c6, type: 3}

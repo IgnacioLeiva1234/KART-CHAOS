@@ -103,12 +103,10 @@ public class KartController : MonoBehaviour
     {
         view = GetComponent<PhotonView>();
         Debug.Log(
-    "Auto: " + gameObject.name +
-    " | ViewID: " + view.ViewID +
-    " | IsMine: " + view.IsMine +
-    " | Owner: " + view.OwnerActorNr +
-    " | LocalPlayer: " + PhotonNetwork.LocalPlayer.ActorNumber
-);
+        "Auto: " + gameObject.name +
+        " | IsMine: " + view.IsMine +
+        " | Owner: " + view.OwnerActorNr
+    );
         rb = GetComponent<Rigidbody>();
         rb.centerOfMass = new Vector3(0f, -0.4f, 0f); // más estable, menos vuelcos
         facingYaw = transform.eulerAngles.y;
