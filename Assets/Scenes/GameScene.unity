@@ -3214,6 +3214,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 2415176792567494601, guid: 58f138ae24c691e45b8c4603adcb488b, type: 3}
+      propertyPath: m_Name
+      value: PowerUpDropPoint
+      objectReference: {fileID: 0}
     - target: {fileID: 3897570280157734489, guid: 58f138ae24c691e45b8c4603adcb488b, type: 3}
       propertyPath: m_LocalPosition.x
       value: -5.07061
@@ -3266,11 +3270,57 @@ PrefabInstance:
       propertyPath: sceneViewId
       value: 1
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    - target: {fileID: 6159308892517795836, guid: 58f138ae24c691e45b8c4603adcb488b, type: 3}
+      propertyPath: ObservedComponents.Array.size
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6159308892517795836, guid: 58f138ae24c691e45b8c4603adcb488b, type: 3}
+      propertyPath: 'ObservedComponents.Array.data[0]'
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 6863160648674990068, guid: 58f138ae24c691e45b8c4603adcb488b, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.18
+      objectReference: {fileID: 0}
+    - target: {fileID: 6863160648674990068, guid: 58f138ae24c691e45b8c4603adcb488b, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -1.988
+      objectReference: {fileID: 0}
+    m_RemovedComponents:
+    - {fileID: 8549210182569326881, guid: 58f138ae24c691e45b8c4603adcb488b, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 4421729070721252579, guid: 58f138ae24c691e45b8c4603adcb488b, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5040484627936445336}
   m_SourcePrefab: {fileID: 100100000, guid: 58f138ae24c691e45b8c4603adcb488b, type: 3}
+--- !u!1 &5040484627936445335 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4421729070721252579, guid: 58f138ae24c691e45b8c4603adcb488b, type: 3}
+  m_PrefabInstance: {fileID: 5040484627936445334}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &5040484627936445336
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5040484627936445335}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7adcad7270b7ad6458db633abca46240, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PowerUpPickup
+  type: 1
+  amount: 3
+  respawnTime: 10
+  triggerRadius: 1.5
+  rotateSpeed: 90
+  bobAmplitude: 0.2
+  bobSpeed: 2
+  pickupVFXPrefab: {fileID: 0}
+  pickupSound: {fileID: 0}
 --- !u!54 &5811596515129782043
 Rigidbody:
   m_ObjectHideFlags: 0
