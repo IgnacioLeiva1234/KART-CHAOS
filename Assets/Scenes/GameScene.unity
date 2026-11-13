@@ -401,9 +401,13 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -1720676993951708314, guid: 6fd4dcce52acca64cbe5f94d5379a533, type: 3}
+      propertyPath: m_Materials.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -1720676993951708314, guid: 6fd4dcce52acca64cbe5f94d5379a533, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
-      objectReference: {fileID: 2100000, guid: 6d199cf306e2cd9489c96998b5d60484, type: 2}
+      objectReference: {fileID: 2100000, guid: 60ada8ae61a6de64aa2bae5a5992e05f, type: 2}
     - target: {fileID: -1720676993951708314, guid: 6fd4dcce52acca64cbe5f94d5379a533, type: 3}
       propertyPath: 'm_Materials.Array.data[1]'
       value: 
@@ -2227,8 +2231,38 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: f2d624de1a6688247b2fe3902d6d0e03, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1473956774}
   m_SourcePrefab: {fileID: 100100000, guid: f2d624de1a6688247b2fe3902d6d0e03, type: 3}
+--- !u!1 &1473956773 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: f2d624de1a6688247b2fe3902d6d0e03, type: 3}
+  m_PrefabInstance: {fileID: 1471372128}
+  m_PrefabAsset: {fileID: 0}
+--- !u!95 &1473956774
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1473956773}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 21828499346d7214ab6abdf918925551, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1 &1570779377
 GameObject:
   m_ObjectHideFlags: 0
