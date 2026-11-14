@@ -20641,6 +20641,10 @@ MonoBehaviour:
   tier1Power: 1
   tier2Power: 1.8
   tier3Power: 2.5
+  minBumpSpeed: 2
+  bumpMultiplier: 0.65
+  maxBumpSpeed: 8
+  bumpDecay: 12
   rearWheelTransforms: []
   boostVFX: {fileID: 6125375325320994328}
   skidTrails:
@@ -20656,7 +20660,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4421729070721252579}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 00168161593b44242b3935bc745e1888, type: 3}
   m_Name: 
