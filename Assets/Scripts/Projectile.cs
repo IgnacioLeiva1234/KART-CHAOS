@@ -35,6 +35,7 @@ public class Projectile : MonoBehaviour
     [SerializeField] private GameObject owner; // se asigna desde KartShooter al instanciar, para no autoimpactarse
 
     private Rigidbody rb;
+    private bool hasHit; // evita contar dos impactos si toca dos colliders del mismo kart en el mismo frame
 
     private void Awake()
     {
@@ -58,6 +59,10 @@ public class Projectile : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        // Otros triggers (minas, pickups de munición, zonas) no son sólidos:
+        // el proyectil los atraviesa sin destruirse.
+        if (other.isTrigger) return;
+
         HandleHit(other.gameObject);
     }
 
@@ -80,13 +85,34 @@ public class Projectile : MonoBehaviour
         if (hit.GetComponent<Projectile>() != null)
             return;
 
+        if (hasHit) return;
+        hasHit = true;
+
         Debug.Log("Proyectil impactó contra: " + hit.name); // podés borrar esta línea después
 
-        // Aplicar daño si el objeto golpeado (o su padre) tiene KartHealth.
-        var health = hit.GetComponentInParent<KartHealth>();
-        if (health != null)
+        // Avisar al objetivo (el kart o su padre) que recibió un impacto.
+        var target = hit.GetComponentInParent<DestructibleTarget>();
+        if (target == null)
         {
-            health.TakeDamage(damage, owner);
+            // Respaldo: si el componente quedó en un hijo/vecino del mismo kart,
+            // lo buscamos subiendo hasta 3 niveles y mirando los hijos de cada uno.
+            Transform t = hit.transform;
+            for (int i = 0; i < 3 && t != null && target == null; i++)
+            {
+                target = t.GetComponentInChildren<DestructibleTarget>();
+                t = t.parent;
+            }
+        }
+
+        if (target != null)
+        {
+            target.TakeHit();
+        }
+        else
+        {
+            Debug.LogWarning("El proyectil impactó contra '" + hit.name +
+                "' pero ni ese objeto ni sus padres tienen el componente DestructibleTarget. " +
+                "Por eso no baja la vida: agregáselo a la raíz del kart.");
         }
 
         if (impactVFXPrefab != null)
