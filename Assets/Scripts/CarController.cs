@@ -1,5 +1,4 @@
 using UnityEngine;
-using Photon.Pun;
 
 /// <summary>
 /// Controlador de kart estilo arcade para Unity 6.
@@ -20,8 +19,7 @@ using Photon.Pun;
 ///    mini-turbo, y un AudioSource + clips si querés sonido de motor/derrape.
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
-[RequireComponent (typeof(PhotonView))]
-public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
+public class KartController : MonoBehaviour
 {
     [Header("Movimiento")]
     [SerializeField] private float maxSpeed = 32f;        // m/s
@@ -59,15 +57,6 @@ public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
     [SerializeField] private float tier2Power = 1.5f;
     [SerializeField] private float tier3Power = 2.2f;
 
-    [Header("Choque entre los karts")]
-    [SerializeField] private float minBumpSpeed = 2f;
-    [SerializeField] private float bumpMultiplier = 0.65f;
-    [SerializeField] private float maxBumpSpeed = 8f;
-    [SerializeField] private float bumpDecay = 12f;
-
-    private Vector3 driveVelocityPreBump;
-    private Vector3 bumpVelocity;
-
     [Header("Referencias opcionales")]
     [SerializeField] private Transform[] rearWheelTransforms;
     [SerializeField] private ParticleSystem boostVFX;
@@ -75,16 +64,6 @@ public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
     [SerializeField] private ParticleSystem[] driftSparksVFX; // chispas continuas mientras derrapa (una por rueda trasera)
 
     private Rigidbody rb;
-    private PhotonView view;
-
-    //Variables de tipo GameObject privadas (no se muestran en el inspector)
-    private GameObject playerCamera;
-    private GameObject skidPointIzq;
-    private GameObject skidPointDer;
-    private GameObject particleSystem;
-    private GameObject firePoint;
-    private GameObject mineDropPoint;
-    private GameObject healthCanvas;
 
     // Estado interno
     private float currentSpeed;          // escalar con signo (+ adelante, - atrás)
@@ -119,26 +98,10 @@ public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
 
     private void Awake()
     {
-        view = GetComponent<PhotonView>();
-        Debug.Log(
-        "Auto: " + gameObject.name +
-        " | IsMine: " + view.IsMine +
-        " | Owner: " + view.OwnerActorNr
-    );
-        
         rb = GetComponent<Rigidbody>();
-        rb.centerOfMass = new Vector3(0f, -0.4f, 0f); // más estable, menos vuelcos
-
+        rb.centerOfMass = new Quaternion.Euler (0f, -0.4f, 0f) * Vector3.forward; // más estable, menos vuelcos
         facingYaw = transform.eulerAngles.y;
         velocityYaw = facingYaw;
-
-        playerCamera = transform.Find ("Main Camera").gameObject;
-        skidPointIzq = transform.Find ("SkidPoint_Izq").gameObject;
-        skidPointDer = transform.Find ("SkidPoint_Der").gameObject;
-        particleSystem = transform.Find ("Particle System(TURBO)").gameObject;
-        firePoint = transform.Find ("FirePoint").gameObject;
-        mineDropPoint = transform.Find ("MineDropPoint").gameObject;
-        healthCanvas = transform.Find ("HealthCanvas").gameObject;
     }
 
     private void Update()
@@ -151,24 +114,19 @@ public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
 
     private void FixedUpdate()
     {
-        //y
-        if (view.IsMine)
-        {
-            float dt = Time.fixedDeltaTime;
+        float dt = Time.fixedDeltaTime;
 
-            bool forward = Input.GetKey(KeyCode.W);
-            bool back = Input.GetKey(KeyCode.S);
-            bool left = Input.GetKey(KeyCode.A);
-            bool right = Input.GetKey(KeyCode.D);
+        bool forward = Input.GetKey(KeyCode.W);
+        bool back = Input.GetKey(KeyCode.S);
+        bool left = Input.GetKey(KeyCode.A);
+        bool right = Input.GetKey(KeyCode.D);
+        bool wantDrift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 
-            bool wantDrift = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-
-            HandleAcceleration(forward, back, dt);
-            HandleSteeringAndDrift(left, right, wantDrift, dt);
-            HandleBoost(dt);
-            ApplyMovement(dt);
-            UpdateVisuals();
-        }
+        HandleAcceleration(forward, back, dt);
+        HandleSteeringAndDrift(left, right, wantDrift, dt);
+        HandleBoost(dt);
+        ApplyMovement(dt);
+        UpdateVisuals();
     }
 
     private void HandleAcceleration(bool forward, bool back, float dt)
@@ -218,7 +176,7 @@ public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
         {
             ReleaseDrift();
         }
-
+         Debug.Log("TURBO ACTIVADO - Tier: " + boostTier + " | Carga: " + driftCharge);
         if (isDrifting)
         {
             driftTimer += dt;
@@ -342,8 +300,8 @@ public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
 
     private void ApplyMovement(float dt)
     {
-        //El kart gira hacia donde apunta el frente
-        Quaternion targetRot = Quaternion.Euler (0f, facingYaw, 0f);
+        // rotación visual del kart
+        Quaternion targetRot = Quaternion.Euler(0f, facingYaw, 0f);
         rb.MoveRotation(targetRot);
 
         //Calcula la velocidad del manejo, incluido el derrape
@@ -358,6 +316,7 @@ public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
         //Reduce el empujon para el proximo paso de fisica
         bumpVelocity = Vector3.MoveTowards (bumpVelocity, Vector3.zero, bumpDecay * dt);
 
+        rb.linearVelocity = targetVelocity;
     }
 
     private void UpdateVisuals()
@@ -387,56 +346,10 @@ public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
         }
     }
 
-    // Lo llama DestructibleTarget al reaparecer el kart (vía SendMessage).
-    // Sin esto, el kart conservaría la velocidad y el ángulo de antes de morir
-    // y saldría girando o disparado al aparecer en el RespawnPoint.
-    private void OnRespawned()
-    {
-        currentSpeed = 0f;
-        facingYaw = transform.eulerAngles.y;
-        velocityYaw = facingYaw;
-
-        isDrifting = false;
-        driftCharge = 0f;
-        driftTimer = 0f;
-        driftRecoveryTimer = 0f;
-
-        boostTimer = 0f;
-        boostTier = 0;
-        overspeed = 0f;
-        boostTotalDuration = 0f;
-
-        SetDriftEffects(false);
-    }
-
     private static float NormalizeAngle(float angle)
     {
         angle %= 360f;
         if (angle < 0f) angle += 360f;
         return angle;
-    }
-
-    //Funciones de photon PUN 2: OnPhotonInstantiate se ejecuta una vez que...
-    //se instancio un prefab del proyecto en la escena utilizando PhotonNetwork.Instantiate
-    public void OnPhotonInstantiate (PhotonMessageInfo info)
-    {
-        playerCamera.SetActive (view.IsMine);
-        //Si el kart no es mio, de afuera se ve kinematico (para que no se teleporte). En este script igual se le agrega choque al kart...
-        //para que pueda chocar al karting a pesar de tener la condicion is kinematic = true
-        rb.isKinematic = !view.IsMine;
-    }
-
-    //Función que se ejecuta al colisionar con otros kartings o más objetos animados/inanimados de la escena
-    private void OnCollisionEnter (Collision col)
-    {
-        if (view.IsMine)
-        {
-            if (col.gameObject.CompareTag ("Player"))
-            {
-                Vector3 direccion = col.gameObject.transform.position - gameObject.transform.position;
-                direccion.y = 0f;
-                direccion = direccion.normalized;
-            }    
-        }
     }
 }
