@@ -37,7 +37,7 @@ public class SpawnPlayers : MonoBehaviour
                 IEnumerator SpawnDelay(float WaitTime = 0.0111f)
                 {
                     yield return new WaitForSeconds (WaitTime);
-                }   
+                }
             }
         }
     }

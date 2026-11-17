@@ -22,28 +22,5 @@ public enum PowerUpType
 
 public abstract class KartPowerUp : MonoBehaviour
 {
-    [Header("Munición del cañon")]
-    [Tooltip("Máximo de usos que puede acumular el jugador de este power-up.")]
-    [SerializeField] private int maxAmmo = 5;
-
-
-    public int MaxAmmo => maxAmmo;
-
-
-    public abstract PowerUpType Type { get; }
-    public abstract string DisplayName { get; }
-
-
-    /// <summary>
-    /// Ejecuta el power-up. Devuelve true si se usó de verdad (entonces se
-    /// descuenta 1 de munición) y false si no pudo (cooldown, falta algo).
-    /// "owner" es el kart que lo usa.
-    /// </summary>
-    public abstract bool Use(GameObject owner);
-
-
-    // --- Cooldown compartido ---
-    private float nextUseTime;
-    protected bool OnCooldown => Time.time < nextUseTime;
-    protected void StartCooldown(float seconds) { nextUseTime = Time.time + seconds; }
+    
 }

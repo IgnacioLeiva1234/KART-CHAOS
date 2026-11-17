@@ -1,26 +1,17 @@
-using System.Collections;
 using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
 
-/// <summary>
-/// Ítem flotante que entrega un power-up al kart que lo toca. UN solo
-/// script sirve para todas las armas: en el Inspector elegís el tipo
-/// (Cannon, Mine...) y la cantidad de usos.
-/// Reemplaza a AmmoPickup y MinePickup.
-///
-/// Se configura solo: fuerza el Collider a Trigger y agrega un Rigidbody
-/// kinemático si falta.
-///
-/// SETUP:
-///  1. Creá un objeto con el aspecto del ítem (un cubo chico, una caja).
-///  2. Add Component > "Power Up Pickup" y elegí el Type.
-///  3. Hacelo Prefab y repartilo por el mapa. Para otro tipo de arma,
-///     duplicá el prefab y cambiá el Type (y el color del material).
-/// </summary>
 public class PowerUpPickup : MonoBehaviour
 {
     [Header("Ítem")]
-    [SerializeField] private PowerUpType type = PowerUpType.Cannon;
-    [SerializeField] private int amount = 3;
+    [SerializeField] private string[] powerUpReferenceNames = {"Bomb", "Molotov", "Turret", "LandMine"}; //Nombre de los power ups, va en la lista de power ups asignados.
+    /*
+    No ponemos GameObjects como elementos del array porque no es necesario, tenemos que usar un string o numero que haga...
+    //referencia a el gameObject que luego vamos a hacer aparecer en el otro script.
+    */
+    [SerializeField] private List<GameObject> toBeAssignedPowerUps = new List <GameObject>(); //Listado de nombres de refcia. ↑ para mostrar los powerups en la UI
+    [SerializeField] private int amount = 6;
     [SerializeField] private float respawnTime = 10f;
     [SerializeField] private float triggerRadius = 1.5f; // solo si no tiene Collider propio
 
@@ -41,6 +32,7 @@ public class PowerUpPickup : MonoBehaviour
     private void Awake()
     {
         startLocalPos = transform.localPosition;
+        toBeAssignedPowerUps = new List <GameObject>(powerUpReferenceNames ["Bomb", "Molotov", "LandMine", "Turret"]);
 
         col = GetComponent<Collider>();
         if (col == null)
@@ -75,7 +67,11 @@ public class PowerUpPickup : MonoBehaviour
         KartPowerUpHolder holder = other.GetComponentInParent<KartPowerUpHolder>();
         if (holder == null) return; // no es un kart con inventario
 
-        if (!holder.Collect(type, amount)) return; // el kart no soporta este power-up
+        string elegido = powerUpReferenceNames[Random.Range (0, powerUpReferenceNames.Length)];
+
+        if (!holder.Collect(elegido, amount)) return;
+
+        Debug.Log ("El power up elegido es " + elegido);
 
         if (pickupVFXPrefab != null)
             Instantiate(pickupVFXPrefab, transform.position, Quaternion.identity);

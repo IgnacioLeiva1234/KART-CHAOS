@@ -347,7 +347,7 @@ public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
         rb.MoveRotation(targetRot);
 
         //Calcula la velocidad del manejo, incluido el derrape
-        Vector3 moveDir = new Vector3 (0f, velocityYaw, 0f);
+        Vector3 moveDir = Quaternion.Euler (0f, velocityYaw, 0f) * Vector3.forward;
         driveVelocityPreBump = moveDir * currentSpeed;
 
         //Suma el empujon y conserva la velocidad vertical
