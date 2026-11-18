@@ -71,6 +71,7 @@ public class LandMine : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         TryTrigger(other);
+        Debug.Log ("AAAAAAAAAAAAAAAAAAAAAAAAAAAA");
     }
 
     // Por si un kart ya estaba encima cuando la mina terminó de armarse.
@@ -82,7 +83,7 @@ public class LandMine : MonoBehaviour
     private void TryTrigger(Collider other)
     {
         if (exploded || armTimer > 0f) return;
-        if (other.isTrigger) return; // ignorar otros triggers (pickups, proyectiles, etc.)
+        if (!other.isTrigger) return; // ignorar otros triggers (pickups, proyectiles, etc.)
 
         // Ignorar proyectiles: la mina no explota con balas.
         if (other.GetComponentInParent<Projectile>() != null) return;

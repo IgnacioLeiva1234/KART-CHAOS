@@ -1,38 +1,52 @@
-using UnityEngine;
 using System.Collections;
-using System.Collections.Generic;
+using UnityEngine;
 
+
+/// <summary>
+/// Ítem flotante que entrega un power-up al kart que lo toca. UN solo
+/// script sirve para todas las armas: en el Inspector elegís el tipo
+/// (Cannon, Mine...) y la cantidad de usos.
+/// Reemplaza a AmmoPickup y MinePickup.
+///
+/// Se configura solo: fuerza el Collider a Trigger y agrega un Rigidbody
+/// kinemático si falta.
+///
+/// SETUP:
+///  1. Creá un objeto con el aspecto del ítem (un cubo chico, una caja).
+///  2. Add Component > "Power Up Pickup" y elegí el Type.
+///  3. Hacelo Prefab y repartilo por el mapa. Para otro tipo de arma,
+///     duplicá el prefab y cambiá el Type (y el color del material).
+/// </summary>
 public class PowerUpPickup : MonoBehaviour
 {
     [Header("Ítem")]
-    [SerializeField] private string[] powerUpReferenceNames = {"Bomb", "Molotov", "Turret", "LandMine"}; //Nombre de los power ups, va en la lista de power ups asignados.
-    /*
-    No ponemos GameObjects como elementos del array porque no es necesario, tenemos que usar un string o numero que haga...
-    //referencia a el gameObject que luego vamos a hacer aparecer en el otro script.
-    */
-    [SerializeField] private List<GameObject> toBeAssignedPowerUps = new List <GameObject>(); //Listado de nombres de refcia. ↑ para mostrar los powerups en la UI
-    [SerializeField] private int amount = 6;
+    [SerializeField] private PowerUpType type = PowerUpType.Cannon;
+    [SerializeField] private int amount = 3;
     [SerializeField] private float respawnTime = 10f;
     [SerializeField] private float triggerRadius = 1.5f; // solo si no tiene Collider propio
+
 
     [Header("Efecto visual (flotar y girar)")]
     [SerializeField] private float rotateSpeed = 90f;
     [SerializeField] private float bobAmplitude = 0.2f;
     [SerializeField] private float bobSpeed = 2f;
 
+
     [Header("Feedback (opcional)")]
     [SerializeField] private GameObject pickupVFXPrefab;
     [SerializeField] private AudioClip pickupSound;
+
 
     private Vector3 startLocalPos;
     private bool collected;
     private Collider col;
     private Renderer[] renderers;
 
+
     private void Awake()
     {
         startLocalPos = transform.localPosition;
-        toBeAssignedPowerUps = new List <GameObject>(powerUpReferenceNames ["Bomb", "Molotov", "LandMine", "Turret"]);
+
 
         col = GetComponent<Collider>();
         if (col == null)
@@ -43,43 +57,49 @@ public class PowerUpPickup : MonoBehaviour
         }
         col.isTrigger = true;
 
+
         Rigidbody rb = GetComponent<Rigidbody>();
         if (rb == null) rb = gameObject.AddComponent<Rigidbody>();
         rb.isKinematic = true;
         rb.useGravity = false;
 
+
         renderers = GetComponentsInChildren<Renderer>();
     }
+
 
     private void Update()
     {
         if (collected) return;
+
 
         transform.Rotate(Vector3.up, rotateSpeed * Time.deltaTime, Space.World);
         float y = Mathf.Sin(Time.time * bobSpeed) * bobAmplitude;
         transform.localPosition = startLocalPos + new Vector3(0f, y, 0f);
     }
 
+
     private void OnTriggerEnter(Collider other)
     {
         if (collected || other.isTrigger) return;
 
+
         KartPowerUpHolder holder = other.GetComponentInParent<KartPowerUpHolder>();
         if (holder == null) return; // no es un kart con inventario
 
-        string elegido = powerUpReferenceNames[Random.Range (0, powerUpReferenceNames.Length)];
 
-        if (!holder.Collect(elegido, amount)) return;
+        if (!holder.Collect(type, amount)) return; // el kart no soporta este power-up
 
-        Debug.Log ("El power up elegido es " + elegido);
 
         if (pickupVFXPrefab != null)
             Instantiate(pickupVFXPrefab, transform.position, Quaternion.identity);
         if (pickupSound != null)
             AudioSource.PlayClipAtPoint(pickupSound, transform.position);
 
+
         StartCoroutine(HideAndRespawn());
     }
+
 
     private IEnumerator HideAndRespawn()
     {
@@ -89,6 +109,7 @@ public class PowerUpPickup : MonoBehaviour
         collected = false;
         SetVisible(true);
     }
+
 
     private void SetVisible(bool visible)
     {

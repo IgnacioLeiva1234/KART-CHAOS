@@ -8,7 +8,7 @@ using UnityEngine;
 ///  1. Add Component > "Mine Power Up".
 ///  2. Mine Prefab: el prefab de la mina (el que tiene LandMine).
 /// </summary>
-public class MinePowerUp : KartController
+public class MinePowerUp : KartPowerUp
 {
     [Header("Mina")]
     [SerializeField] private GameObject minePrefab;
