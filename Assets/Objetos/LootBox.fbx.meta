@@ -3,7 +3,37 @@ guid: 4fd24485febe83841ab3f1067b7cff6b
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Fuxia
+    second: {fileID: 2100000, guid: deebbc6c56bef4e48adc2e5bbedbcc65, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Gris
+    second: {fileID: 2100000, guid: 56023cd099282d74da7b80bf55453c5b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Interior
+    second: {fileID: 2100000, guid: 1ba67ead19c20db449f19e56a3437172, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Material.001
+    second: {fileID: 2100000, guid: 85ad01288fe14134ea00a50497aff49d, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: RosClaro
+    second: {fileID: 2100000, guid: 92ec416c7b92dd04c90bb84d82623c55, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Violeta
+    second: {fileID: 2100000, guid: 7651754dda0ffb240b6e476c6fd87b8a, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

@@ -99,7 +99,7 @@ public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
         boostTimer > 0f && boostTotalDuration > 0f
             ? Mathf.Clamp01(boostTimer / boostTotalDuration)
             : 0f;
-
+    public SpawnPlayers spawnPlayers;
     public bool IsBoosting => boostTimer > 0f;
     public float SpeedKmh => Mathf.Abs(currentSpeed) * 3.6f;
     public float DriftCharge01 => driftCharge;
@@ -483,6 +483,9 @@ public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
 
     public void OnPhotonInstantiate (PhotonMessageInfo info)
     {
-        Debug.Log ("Objeto instanciado por: " + info.Sender.NickName);
+        if (spawnPlayers.projectPrefabs != null)
+        {
+            Debug.Log ("Objeto instanciado por: " + info.Sender.NickName);
+        }
     }
 }
