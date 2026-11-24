@@ -22,6 +22,7 @@ public class MinePowerUp : KartPowerUp
 
     public override PowerUpType Type => PowerUpType.Mine;
     public override string DisplayName => "Mina";
+    public override bool IsReady => minePrefab != null;
 
     public override bool Use(GameObject owner)
     {
@@ -33,11 +34,9 @@ public class MinePowerUp : KartPowerUp
             return false;
         }
 
-        Vector3 pos = GetGroundPositionBehind(owner.transform);
-        GameObject mine = Instantiate(minePrefab, pos, Quaternion.identity);
-
-        LandMine landMine = mine.GetComponent<LandMine>();
-        if (landMine != null) landMine.SetOwner(owner);
+        if (!GetGroundPositionBehind(owner.transform, out Vector3 pos)) return false;
+        GameObject mine = PowerUpNetwork.Spawn(minePrefab, pos, Quaternion.identity, owner);
+        if (mine == null) return false;
 
         StartCooldown(placeCooldown);
 
@@ -46,7 +45,7 @@ public class MinePowerUp : KartPowerUp
     }
 
     // Punto detrás del kart, apoyado sobre el piso.
-    private Vector3 GetGroundPositionBehind(Transform kart)
+    private bool GetGroundPositionBehind(Transform kart, out Vector3 position)
     {
         Vector3 back = -kart.forward;
         back.y = 0f;
@@ -60,13 +59,14 @@ public class MinePowerUp : KartPowerUp
         float best = float.MaxValue;
         foreach (var h in hits)
         {
-            if (h.transform.IsChildOf(kart)) continue;
+            if (h.transform.IsChildOf(kart) || DestructibleTarget.Find(h.transform) != null || h.normal.y < .4f) continue;
             if (h.distance < best)
             {
                 best = h.distance;
                 pos = h.point;
             }
         }
-        return pos;
+        position = pos;
+        return best < float.MaxValue;
     }
 }

@@ -12,7 +12,13 @@ EditorBuildSettings:
     path: Assets/Scenes/Lobby.unity
     guid: c9c6e93e2e16a8944824e7029265a24a
   - enabled: 1
-    path: Assets/Scenes/GameScene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
+    path: Assets/Scenes/MapSelection.unity
+    guid: 449e6bf81e1bef146aa9460575741299
+  - enabled: 1
+    path: Assets/Scenes/DustyTerrain.unity
+    guid: 851a12a8f9bf63840806948982a4c857
+  - enabled: 1
+    path: Assets/Scenes/LargeRoad.unity
+    guid: a0f61244061a7214896676d2912aa535
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

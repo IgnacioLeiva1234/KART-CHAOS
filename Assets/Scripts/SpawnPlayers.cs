@@ -1,50 +1,60 @@
-using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
 using Photon.Pun;
+using UnityEngine;
 
 public class SpawnPlayers : MonoBehaviour
 {
-    [Header("Project prefabs")]
-    [Tooltip("Prefab dentro de una carpeta Resources requerida por Photon")]
-    public List <GameObject> projectPrefabs = new List <GameObject>();
-    [Header("Game prefabs (players)")]
-    [Tooltip("Prefab dentro de una carpeta Resources requerida por Photon")]
-    public List <GameObject> players = new List <GameObject>();
+    [Header("Prefab del jugador")]
+    [Tooltip("Se usa el primer prefab válido de esta lista. Debe estar dentro de Resources.")]
+    public List<GameObject> projectPrefabs = new List<GameObject>();
 
-    [Header("Along-normals ranged spawn values")]
-    [Tooltip("Rango de valores de los ejes X, Y e Z en los que apareceran los jugadores")]
+    [Header("Jugadores creados por esta computadora")]
+    public List<GameObject> players = new List<GameObject>();
+
+    [Header("Kart para probar la escena sin conectarse")]
+    public GameObject scenePreviewKart;
+
+    [Header("Posición alternativa si faltan RespawnPoints")]
     public float minX;
     public float maxX;
-    public float fixedValueY; //Se mantiene ya que los jugadores spawnean a la misma altura
+    public float fixedValueY;
     public float minZ;
     public float maxZ;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    private bool spawned;
+
+    private void Start()
     {
+        if (spawned || !PhotonNetwork.InRoom) return;
+        if (scenePreviewKart != null) scenePreviewKart.SetActive(false);
 
-        if (PhotonNetwork.IsConnectedAndReady)
+        // También evita duplicar un kart si hay dos spawners en la escena.
+        foreach (KartController kart in FindObjectsByType<KartController>(FindObjectsSortMode.None))
         {
-            foreach (GameObject prefab in projectPrefabs)
+            PhotonView view = kart.GetComponent<PhotonView>();
+            if (view != null && view.ViewID != 0 && view.IsMine)
             {
-                Vector3 randomPosition = new Vector3 (Random.Range (minX, maxX), fixedValueY, Random.Range (minZ, maxZ));
-                GameObject clonCreado = PhotonNetwork.Instantiate (prefab.name, randomPosition, Quaternion.identity);
-
-                players.Add (clonCreado);
-                StartCoroutine (SpawnDelay());
-
-                IEnumerator SpawnDelay(float WaitTime = 0.0111f)
-                {
-                    yield return new WaitForSeconds (WaitTime);
-                }
+                spawned = true;
+                return;
             }
         }
-    }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
+        GameObject selectedPrefab = projectPrefabs.Find(prefab => prefab != null);
+        if (selectedPrefab == null)
+        {
+            Debug.LogError("SpawnPlayers: asigná un prefab de kart de Resources en Project Prefabs.");
+            return;
+        }
+
+        RespawnPoint point = RespawnPoint.GetRandom();
+        Vector3 position = point != null
+            ? point.transform.position
+            : new Vector3(Random.Range(minX, maxX), fixedValueY, Random.Range(minZ, maxZ));
+        Quaternion rotation = point != null ? point.transform.rotation : Quaternion.identity;
+
+        GameObject kartCreated = PhotonNetwork.Instantiate(selectedPrefab.name, position, rotation);
+        if (kartCreated == null) return;
+        players.Add(kartCreated);
+        spawned = true;
     }
 }

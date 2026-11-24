@@ -1,26 +1,13 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Marca un lugar del mapa donde pueden reaparecer los karts al morir.
-/// Cuando un kart muere, elige el punto MÁS ALEJADO de los otros karts
-/// vivos, para que nadie reaparezca encima de un enemigo.
-///
-/// SETUP:
-///  1. GameObject > Create Empty. Renombralo "RespawnPoint".
-///  2. Add Component > "Respawn Point".
-///  3. Ubicalo en el mapa, apenas por encima del piso (unos 0.5 de altura).
-///     La flecha verde que ves en la Scene indica hacia dónde va a mirar
-///     el kart al reaparecer (rotalo con la herramienta de rotación).
-///  4. Duplicalo (Ctrl+D) y repartí varios por el mapa.
-///
-/// Si no hay ningún RespawnPoint en la escena, el kart reaparece en el
-/// lugar donde empezó la partida.
-/// </summary>
+/// <summary>Lugar de aparición. Se elige al azar entre los puntos libres.</summary>
 public class RespawnPoint : MonoBehaviour
 {
-    /// <summary>Todos los puntos activos de la escena.</summary>
     public static readonly List<RespawnPoint> All = new List<RespawnPoint>();
+
+    [Tooltip("Distancia mínima a otro kart vivo para considerar libre este punto.")]
+    [Min(0f)] public float clearanceRadius = 4f;
 
     private void OnEnable()
     {
@@ -32,42 +19,47 @@ public class RespawnPoint : MonoBehaviour
         All.Remove(this);
     }
 
-    /// <summary>
-    /// Devuelve el punto más alejado de los demás karts vivos. Si no hay
-    /// otros karts, elige uno al azar. Devuelve null si no hay puntos.
-    /// </summary>
+    // Conserva la llamada utilizada por DestructibleTarget al reaparecer.
     public static RespawnPoint GetBest(DestructibleTarget who)
     {
-        if (All.Count == 0) return null;
+        return GetRandom(who);
+    }
 
-        RespawnPoint best = null;
-        float bestScore = -1f;
+    public static RespawnPoint GetRandom(DestructibleTarget who = null)
+    {
+        RespawnPoint selected = null;
+        RespawnPoint farthest = null;
+        float farthestDistance = -1f;
+        int freeCount = 0;
 
         foreach (RespawnPoint point in All)
         {
-            // Distancia de este punto al kart vivo más cercano.
-            float nearest = float.MaxValue;
+            if (point == null || !point.isActiveAndEnabled) continue;
+
+            float nearestSquared = float.PositiveInfinity;
             foreach (DestructibleTarget other in DestructibleTarget.All)
             {
-                if (other == who || !other.IsAlive) continue;
-                float d = Vector3.Distance(point.transform.position, other.KartTransform.position);
-                if (d < nearest) nearest = d;
+                if (other == null || other == who || !other.isActiveAndEnabled || !other.IsAlive) continue;
+                float distanceSquared = (point.transform.position - other.KartTransform.position).sqrMagnitude;
+                nearestSquared = Mathf.Min(nearestSquared, distanceSquared);
             }
 
-            // Sin otros karts, todos valen lo mismo: elegimos al azar.
-            float score = nearest == float.MaxValue ? Random.value * 1000f : nearest;
-
-            if (score > bestScore)
+            if (nearestSquared > farthestDistance)
             {
-                bestScore = score;
-                best = point;
+                farthestDistance = nearestSquared;
+                farthest = point;
             }
+
+            if (nearestSquared < point.clearanceRadius * point.clearanceRadius) continue;
+            // Selección uniforme sin crear una lista nueva en cada aparición.
+            freeCount++;
+            if (Random.Range(0, freeCount) == 0) selected = point;
         }
 
-        return best;
+        // Si todos están ocupados, usamos el de mayor separación disponible.
+        return selected != null ? selected : farthest;
     }
 
-    // Para ver los puntos en la ventana Scene.
     private void OnDrawGizmos()
     {
         Gizmos.color = new Color(0.2f, 1f, 0.3f, 0.9f);

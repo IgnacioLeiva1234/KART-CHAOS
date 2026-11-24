@@ -1,5 +1,4 @@
 using UnityEngine;
-using System.Collections;
 using Photon.Pun;
 using UnityEngine.SceneManagement;
 
@@ -8,13 +7,13 @@ public class ConnectToServer : MonoBehaviourPunCallbacks
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        PhotonNetwork.ConnectUsingSettings();
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
+        PhotonNetwork.AutomaticallySyncScene = true;
+        if (PhotonNetwork.InLobby)
+            SceneManager.LoadScene("Lobby");
+        else if (PhotonNetwork.IsConnectedAndReady && !PhotonNetwork.InRoom)
+            PhotonNetwork.JoinLobby();
+        else if (!PhotonNetwork.IsConnected)
+            PhotonNetwork.ConnectUsingSettings();
     }
 
     public override void OnConnectedToMaster()

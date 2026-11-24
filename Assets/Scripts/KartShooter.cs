@@ -1,3 +1,4 @@
+using Photon.Pun;
 using UnityEngine;
 
 /// <summary>
@@ -43,6 +44,9 @@ public class KartShooter : MonoBehaviour
 
     private void Update()
     {
+        var ownerView = GetComponentInParent<PhotonView>();
+        if (PhotonNetwork.InRoom && (ownerView == null || !ownerView.IsMine || ownerView.ViewID == 0)) return;
+
         if (cooldownTimer > 0f)
         {
             cooldownTimer -= Time.deltaTime;
@@ -62,14 +66,28 @@ public class KartShooter : MonoBehaviour
             return;
         }
 
-        GameObject proj = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
-
-        // Le avisamos al proyectil quién lo disparó, para que no se autoimpacte.
-        Projectile projScript = proj.GetComponent<Projectile>();
-        if (projScript != null)
+        var ownerView = GetComponentInParent<PhotonView>();
+        var body = GetComponentInParent<Rigidbody>();
+        GameObject owner = ownerView != null ? ownerView.gameObject : body != null ? body.gameObject : gameObject;
+        GameObject proj;
+        var networkPrefab = Resources.Load<GameObject>("PowerUps/" + projectilePrefab.name);
+        if (networkPrefab == projectilePrefab && networkPrefab.GetComponent<PhotonView>() != null)
         {
-            projScript.SetOwner(gameObject);
+            proj = PowerUpNetwork.Spawn(projectilePrefab, firePoint.position, firePoint.rotation, owner);
         }
+        else if (!PhotonNetwork.InRoom)
+        {
+            // Compatibilidad con los proyectiles antiguos que están fuera de Resources.
+            proj = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
+            var projectile = proj.GetComponent<Projectile>();
+            if (projectile != null) projectile.Initialize(owner, System.Array.Empty<object>());
+        }
+        else
+        {
+            Debug.LogWarning("KartShooter: para disparar en una sala asigná un proyectil de Resources/PowerUps con PhotonView.");
+            return;
+        }
+        if (proj == null) return;
 
         cooldownTimer = fireCooldown;
 

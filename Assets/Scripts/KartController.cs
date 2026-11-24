@@ -6,19 +6,27 @@ using Photon.Pun;
 public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
 {
     [Header("Movimiento")]
-    [SerializeField] private float maxSpeed = 32f;
-    [SerializeField] private float reverseMaxSpeed = 12f;
-    [SerializeField] private float acceleration = 24f;
-    [SerializeField] private float brakeForce = 36f;
+    [SerializeField] private float maxSpeed = 16f;
+    [SerializeField] private float reverseMaxSpeed = 6f;
+    [SerializeField] private float acceleration = 12f;
+    [SerializeField] private float brakeForce = 22f;
     [SerializeField] private float naturalFriction = 12f;
-    [SerializeField] private float turnRate = 140f;
+    [SerializeField] private float turnRate = 75f;
+
+    [Header("Contacto con el piso")]
+    [Min(0.02f)] [SerializeField] private float groundProbeDistance = 0.25f;
+    [Range(0f, 80f)] [SerializeField] private float maxGroundAngle = 60f;
+    [Min(1f)] [SerializeField] private float groundAlignmentSpeed = 12f;
+    [Min(1f)] [SerializeField] private float groundNormalSmoothing = 8f;
+    [Min(30f)] [SerializeField] private float maxGroundRotationSpeed = 110f;
+    [SerializeField] private LayerMask groundLayers = ~0;
 
     [Header("Derrape")]
     [SerializeField] private float minDriftSpeed = 7f;
-    [SerializeField] private float driftTurnMultiplier = 1.6f;
+    [SerializeField] private float driftTurnMultiplier = 1.2f;
     [SerializeField] private float driftSlipLerpSpeed = 3.5f;
-    [SerializeField] private float gripLerpSpeed = 14f;
-    [SerializeField] private float driftRecoveryTime = 0.5f;
+    [SerializeField] private float gripLerpSpeed = 10f;
+    [SerializeField] private float driftRecoveryTime = 0.25f;
     [SerializeField] private float driftChargeTime = 1.6f;
     [SerializeField] private float tier1Threshold = 0.35f;
     [SerializeField] private float tier2Threshold = 0.6f;
@@ -26,13 +34,13 @@ public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
 
     [Header("Mini-Turbo")]
     [Tooltip("Aumento instantáneo de velocidad al activar el turbo.")]
-    [SerializeField] private float boostInstantKick = 8f;
+    [SerializeField] private float boostInstantKick = 3f;
 
     [Tooltip("Velocidad extra por encima de maxSpeed durante el turbo.")]
-    [SerializeField] private float boostSpeedBonus = 6f;
+    [SerializeField] private float boostSpeedBonus = 2f;
 
     [Tooltip("Rapidez con la que el turbo alcanza su velocidad objetivo.")]
-    [SerializeField] private float boostAcceleration = 90f;
+    [SerializeField] private float boostAcceleration = 25f;
 
     [Tooltip("Rapidez con la que desaparece la sobrevelocidad del turbo.")]
     [SerializeField] private float boostDecayRate = 6f;
@@ -42,8 +50,8 @@ public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
     [SerializeField] private float tier3Duration = 1.1f;
 
     [SerializeField] private float tier1Power = 1f;
-    [SerializeField] private float tier2Power = 1.5f;
-    [SerializeField] private float tier3Power = 2.2f;
+    [SerializeField] private float tier2Power = 1.3f;
+    [SerializeField] private float tier3Power = 1.6f;
 
     [Header("Choque entre los karts")]
     [SerializeField] private float minBumpSpeed = 2f;
@@ -60,6 +68,19 @@ public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
     // Componentes del kart.
     private Rigidbody rb;
     private PhotonView view;
+    private Collider[] groundProbeColliders;
+    private readonly RaycastHit[] groundHits = new RaycastHit[32];
+    private readonly ContactPoint[] collisionContacts = new ContactPoint[24];
+    private readonly Vector3[] wallNormals = new Vector3[24];
+    private int wallNormalCount;
+    private int groundContactCount;
+    private Vector3 groundContactNormalSum;
+    private Vector3 firstGroundContact;
+    private bool groundContactsHaveSpan;
+    private Vector3 lastAppliedVelocity;
+    private Vector3 groundNormal = Vector3.up;
+    public bool IsGrounded { get; private set; }
+    public Vector3 GroundNormal => groundNormal;
 
     // Objetos hijos.
     private GameObject playerCamera;
@@ -119,7 +140,20 @@ public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
         );
 
         rb = GetComponent<Rigidbody>();
-        rb.centerOfMass = new Vector3(0f, -0.4f, 0f);
+        // Calcula el centro de masa donde estan los colliders, aunque el modelo este desplazado.
+        rb.ResetCenterOfMass();
+        // Los impactos no pueden volcar el kart. MoveRotation controla su inclinación al terreno.
+        rb.constraints |= RigidbodyConstraints.FreezeRotation;
+        rb.maxDepenetrationVelocity = 3f;
+        rb.collisionDetectionMode = rb.isKinematic
+            ? CollisionDetectionMode.Discrete
+            : CollisionDetectionMode.ContinuousDynamic;
+        var ownColliders = GetComponentsInChildren<Collider>();
+        groundProbeColliders = System.Array.FindAll(ownColliders,
+            c => !c.isTrigger && c.attachedRigidbody == rb && c.name.StartsWith("Rueda"));
+        if (groundProbeColliders.Length == 0)
+            groundProbeColliders = System.Array.FindAll(ownColliders,
+                c => !c.isTrigger && c.attachedRigidbody == rb);
 
         facingYaw = transform.eulerAngles.y;
         velocityYaw = facingYaw;
@@ -383,22 +417,50 @@ public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
 
     private void ApplyMovement(float dt)
     {
-        // Gira el kart hacia donde apunta el frente.
-        Quaternion targetRot = Quaternion.Euler(0f, facingYaw, 0f);
-        rb.MoveRotation(targetRot);
+        rb.angularVelocity = Vector3.zero;
+        IsGrounded = FindGroundNormal(out Vector3 sampledNormal);
+        groundContactCount = 0;
+        groundContactNormalSum = Vector3.zero;
+        groundContactsHaveSpan = false;
+        // Un salto conserva su velocidad de salida aunque los rayos todavía alcancen el piso.
+        if (IsGrounded && Vector3.Dot(rb.linearVelocity, sampledNormal) > 2f)
+            IsGrounded = false;
+        if (IsGrounded)
+            groundNormal = Vector3.Slerp(groundNormal, sampledNormal,
+                1f - Mathf.Exp(-groundNormalSmoothing * dt)).normalized;
+        Vector3 moveDir = Quaternion.Euler(0f, velocityYaw, 0f) * Vector3.forward;
+        Vector3 targetVelocity;
+        if (IsGrounded)
+        {
+            // La dirección y la inclinación siguen la superficie real bajo las ruedas.
+            Vector3 facing = Quaternion.Euler(0f, facingYaw, 0f) * Vector3.forward;
+            facing = Vector3.ProjectOnPlane(facing, groundNormal).normalized;
+            Quaternion targetRot = Quaternion.LookRotation(facing, groundNormal);
+            float alignment = 1f - Mathf.Exp(-groundAlignmentSpeed * dt);
+            Quaternion smoothRotation = Quaternion.Slerp(rb.rotation, targetRot, alignment);
+            rb.MoveRotation(Quaternion.RotateTowards(rb.rotation, smoothRotation, maxGroundRotationSpeed * dt));
 
-        // Calcula la velocidad de manejo, incluido el derrape.
-        Vector3 moveDir =
-            Quaternion.Euler(0f, velocityYaw, 0f) * Vector3.forward;
-
-        driveVelocityPreBump = moveDir * currentSpeed;
-
-        // Suma el empujón y conserva la velocidad vertical.
-        Vector3 targetVelocityAfterBump =
-            driveVelocityPreBump + bumpVelocity;
-
-        targetVelocityAfterBump.y = rb.linearVelocity.y;
-        rb.linearVelocity = targetVelocityAfterBump;
+            // Para la velocidad se usa la normal medida; el suavizado es solo visual/orientación.
+            moveDir = Vector3.ProjectOnPlane(moveDir, sampledNormal).normalized;
+            driveVelocityPreBump = moveDir * currentSpeed;
+            // Conserva la velocidad perpendicular al terreno: la física resuelve el contacto.
+            Vector3 normalVelocity = Vector3.Project(rb.linearVelocity, sampledNormal);
+            targetVelocity = driveVelocityPreBump + Vector3.ProjectOnPlane(bumpVelocity, sampledNormal) + normalVelocity;
+        }
+        else
+        {
+            // En el aire no endereza el kart ni modifica su caída o salto.
+            driveVelocityPreBump = moveDir * currentSpeed;
+            targetVelocity = driveVelocityPreBump + bumpVelocity;
+            targetVelocity.y = rb.linearVelocity.y;
+        }
+        bool pushingWall = RemoveWallVelocity(ref driveVelocityPreBump);
+        RemoveWallVelocity(ref targetVelocity);
+        RemoveWallVelocity(ref bumpVelocity);
+        if (pushingWall) StopPushingWall();
+        wallNormalCount = 0;
+        lastAppliedVelocity = targetVelocity;
+        rb.linearVelocity = targetVelocity;
 
         // Reduce el empujón para el próximo paso de física.
         bumpVelocity = Vector3.MoveTowards(
@@ -406,6 +468,127 @@ public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
             Vector3.zero,
             bumpDecay * dt
         );
+    }
+
+    private bool FindGroundNormal(out Vector3 normal)
+    {
+        normal = Vector3.up;
+        if (groundProbeColliders == null || groundProbeColliders.Length == 0) return false;
+        Vector3 normalSum = Vector3.zero;
+        int supports = 0;
+        float minimumUp = Mathf.Cos(maxGroundAngle * Mathf.Deg2Rad);
+        foreach (var probe in groundProbeColliders)
+        {
+            if (probe == null || !probe.enabled || !probe.gameObject.activeInHierarchy) continue;
+            Bounds bounds = probe.bounds;
+            const float startHeight = 0.2f;
+            Vector3 origin = bounds.center + Vector3.up * startHeight;
+            float distance = bounds.extents.y + startHeight + groundProbeDistance;
+            int count = Physics.RaycastNonAlloc(origin, Vector3.down, groundHits, distance,
+                groundLayers, QueryTriggerInteraction.Ignore);
+            float nearest = float.MaxValue;
+            Vector3 nearestNormal = Vector3.up;
+            for (int i = 0; i < count; i++)
+            {
+                var hit = groundHits[i];
+                if (hit.collider.attachedRigidbody == rb || hit.transform.IsChildOf(transform)) continue;
+                if (hit.collider.GetComponentInParent<KartController>() != null) continue;
+                if (Vector3.Dot(hit.normal, Vector3.up) < minimumUp || hit.distance >= nearest) continue;
+                nearest = hit.distance;
+                nearestNormal = hit.normal;
+            }
+            if (nearest == float.MaxValue) continue;
+            normalSum += nearestNormal;
+            supports++;
+        }
+        // Una sola rueda en una esquina no debe orientar todo el kart como si fuera una rampa.
+        int requiredSupports = Mathf.Min(2, groundProbeColliders.Length);
+        if (supports < requiredSupports)
+        {
+            // Al entrar en una pendiente puede apoyar primero el chasis, antes que los rayos
+            // de las ruedas. Dos contactos separados permiten inclinarlo sin usar un solo borde.
+            if (groundContactCount < 2 || !groundContactsHaveSpan) return false;
+            normal = groundContactNormalSum.normalized;
+            return true;
+        }
+        normal = normalSum.normalized;
+        return true;
+    }
+
+    private void OnCollisionEnter(Collision collision) { RecordWallContacts(collision); }
+    private void OnCollisionStay(Collision collision) { RecordWallContacts(collision); }
+
+    private void RecordWallContacts(Collision collision)
+    {
+        if (rb == null || rb.isKinematic || view == null || !view.IsMine) return;
+        int contactCount = collision.GetContacts(collisionContacts);
+        float minimumGroundUp = Mathf.Cos(maxGroundAngle * Mathf.Deg2Rad);
+        bool canSupport = collision.collider.GetComponentInParent<KartController>() == null;
+        bool blocked = false;
+        for (int i = 0; i < contactCount; i++)
+        {
+            Vector3 normal = collisionContacts[i].normal;
+            if (Vector3.Dot(normal, Vector3.up) >= minimumGroundUp)
+            {
+                if (canSupport)
+                {
+                    Vector3 point = collisionContacts[i].point;
+                    if (groundContactCount == 0) firstGroundContact = point;
+                    else if ((point - firstGroundContact).sqrMagnitude > 0.01f)
+                        groundContactsHaveSpan = true;
+                    groundContactCount++;
+                    groundContactNormalSum += normal;
+                }
+                continue;
+            }
+            Vector3 horizontalNormal = Vector3.ProjectOnPlane(normal, Vector3.up);
+            if (horizontalNormal.sqrMagnitude < 0.1f) continue;
+            horizontalNormal.Normalize();
+            if (Vector3.Dot(lastAppliedVelocity, horizontalNormal) >= -0.05f) continue;
+            blocked = true;
+            bool alreadyRecorded = false;
+            for (int j = 0; j < wallNormalCount; j++)
+                if (Vector3.Dot(wallNormals[j], horizontalNormal) > 0.98f) { alreadyRecorded = true; break; }
+            if (!alreadyRecorded && wallNormalCount < wallNormals.Length)
+                wallNormals[wallNormalCount++] = horizontalNormal;
+        }
+        if (!blocked) return;
+
+        // Un borde puede convertir el empuje del motor en un salto artificial. Conserva únicamente
+        // la subida que ya tenía antes del contacto (por ejemplo al salir de una rampa).
+        Vector3 velocity = rb.linearVelocity;
+        float allowedRise = Mathf.Max(0f, lastAppliedVelocity.y);
+        if (velocity.y > allowedRise) velocity.y = allowedRise;
+        rb.linearVelocity = velocity;
+    }
+
+    private bool RemoveWallVelocity(ref Vector3 velocity)
+    {
+        bool blocked = false;
+        // Dos pasadas también resuelven una esquina formada por dos paredes.
+        for (int pass = 0; pass < 2; pass++)
+        for (int i = 0; i < wallNormalCount; i++)
+        {
+            float intoWall = Vector3.Dot(velocity, wallNormals[i]);
+            if (intoWall >= -0.01f) continue;
+            velocity -= wallNormals[i] * intoWall;
+            blocked = true;
+        }
+        return blocked;
+    }
+
+    private void StopPushingWall()
+    {
+        currentSpeed = 0f;
+        overspeed = 0f;
+        boostTimer = 0f;
+        boostTier = 0;
+        boostTotalDuration = 0f;
+        if (!isDrifting) return;
+        isDrifting = false;
+        driftTimer = 0f;
+        driftCharge = 0f;
+        SetDriftEffects(false);
     }
 
     private void UpdateVisuals()
@@ -452,6 +635,14 @@ public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
     // Lo llama DestructibleTarget al reaparecer el kart.
     private void OnRespawned()
     {
+        bumpVelocity = Vector3.zero;
+        groundNormal = Vector3.up;
+        IsGrounded = false;
+        wallNormalCount = 0;
+        groundContactCount = 0;
+        groundContactNormalSum = Vector3.zero;
+        groundContactsHaveSpan = false;
+        lastAppliedVelocity = Vector3.zero;
         currentSpeed = 0f;
         facingYaw = transform.eulerAngles.y;
         velocityYaw = facingYaw;
@@ -483,9 +674,13 @@ public class KartController : MonoBehaviour, IPunInstantiateMagicCallback
 
     public void OnPhotonInstantiate (PhotonMessageInfo info)
     {
-        if (spawnPlayers.projectPrefabs != null)
-        {
+        playerCamera.SetActive(view.IsMine);
+        rb.collisionDetectionMode = view.IsMine
+            ? CollisionDetectionMode.ContinuousDynamic
+            : CollisionDetectionMode.Discrete;
+        rb.isKinematic = !view.IsMine;
+
+        if (info.Sender != null)
             Debug.Log ("Objeto instanciado por: " + info.Sender.NickName);
-        }
     }
 }

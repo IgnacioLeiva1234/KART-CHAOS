@@ -5,16 +5,8 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// TODO EN UNO para cada kart: vida (7 impactos), barra de vida pixel-art
-/// sobre el kart, y destrucción al llegar a 0.
-///
-/// La barra NO se ve normalmente: aparece sobre el kart cuando le pegan,
-/// pierde un segmento por impacto y se desvanece unos segundos después.
-///
-/// SETUP: seleccioná la RAÍZ de cada kart (el tuyo y los enemigos) y
-/// Add Component > "Destructible Target". Nada más. No hace falta crear
-/// Canvas ni imágenes: la barra se dibuja sola por código.
-/// El kart necesita al menos un Collider (en él o en un hijo).
+/// Vida del kart y reaparición. Usa HealthCanvas/HealthBar del prefab:
+/// la barra se vacía suavemente sin crear cuadrados ni otro Canvas.
 /// </summary>
 public class DestructibleTarget : MonoBehaviour
 {
@@ -32,13 +24,9 @@ public class DestructibleTarget : MonoBehaviour
 
     [Header("Barra de vida")]
     [SerializeField] private bool showHealthBar = true;
-    [Tooltip("Altura extra sobre el punto más alto del kart.")]
-    [SerializeField] private float extraHeight = 0.6f;
-    [SerializeField] private float barWorldWidth = 2.4f;
-    [SerializeField] private float hideAfterSeconds = 3f;
-    [SerializeField] private float fadeSpeed = 6f;
-    [SerializeField] private Color aliveColor = new Color(0.93f, 0.27f, 0.25f);
-    [SerializeField] private Color lostColor = new Color(1f, 0.84f, 0.74f);
+    [SerializeField] private Canvas healthCanvas;
+    [SerializeField] private Image healthBar;
+    [Min(0.01f)] [SerializeField] private float healthBarSmoothTime = 0.2f;
 
     public event Action<int, int> OnHealthChanged;
     public int CurrentHealth => currentHits;
@@ -50,26 +38,16 @@ public class DestructibleTarget : MonoBehaviour
     public bool IsProtected => Time.time < protectedUntil;
     public Transform KartTransform => victim != null ? victim.transform : transform;
 
-    // Medidas en "píxeles de textura" (pixel-art)
-    private const int HeartW = 13, HeartH = 12;
-    private const int SegW = 12, SegH = 9, Slant = 3;
-    private const int Step = SegW - Slant + 1;
-    private const int Gap = 2;
-    private const float Px = 4f;
-
     private GameObject victim;          // lo que se destruye al llegar a 0
-    private Renderer[] bodyRenderers;
-    private Transform barRoot;
-    private CanvasGroup group;
-    private Image[] segments;
-    private float visibleTimer;
-    private Camera cam;
+    private float targetFill = 1f;
+    private float fillVelocity;
     private float protectedUntil;       // inmunidad tras reaparecer
     private Vector3 spawnPos;           // donde empezó el kart (respaldo si no hay RespawnPoints)
     private Quaternion spawnRot;
 
     private void Awake()
     {
+        hitsToDestroy = Mathf.Max(1, hitsToDestroy);
         currentHits = hitsToDestroy;
 
         // Si hay un Rigidbody arriba en la jerarquía, ese es "el kart".
@@ -79,15 +57,12 @@ public class DestructibleTarget : MonoBehaviour
         spawnPos = victim.transform.position;
         spawnRot = victim.transform.rotation;
 
-        bodyRenderers = Array.FindAll(victim.GetComponentsInChildren<Renderer>(),
-            r => r is MeshRenderer || r is SkinnedMeshRenderer);
-
         if (victim.GetComponentInChildren<Collider>() == null)
         {
             Debug.LogWarning("[" + victim.name + "] no tiene ningún Collider: los proyectiles no lo van a poder golpear.");
         }
 
-        if (showHealthBar) BuildBar(hitsToDestroy);
+        BindHealthBar();
     }
 
     private void OnEnable()
@@ -100,21 +75,17 @@ public class DestructibleTarget : MonoBehaviour
         All.Remove(this);
     }
 
-    private void OnDestroy()
-    {
-        if (barRoot != null) Destroy(barRoot.gameObject);
-    }
-
     /// <summary>Lo llama el Projectile cuando impacta.</summary>
     public void TakeHit()
     {
+        var combat = GetComponent<KartCombat>();
+        if (combat != null && !combat.IsLocal) { combat.RequestDamage(1); return; }
         if (currentHits <= 0 || IsProtected) return;
 
         currentHits--;
         Debug.Log(victim.name + " recibió un impacto. Vida: " + currentHits + "/" + hitsToDestroy);
 
         Refresh(currentHits);
-        visibleTimer = hideAfterSeconds;
         OnHealthChanged?.Invoke(currentHits, hitsToDestroy);
 
         if (currentHits <= 0) Die();
@@ -123,15 +94,26 @@ public class DestructibleTarget : MonoBehaviour
     /// <summary>Muerte instantánea, sin importar la vida que le quede (minas, etc.).</summary>
     public void Kill()
     {
+        var combat = GetComponent<KartCombat>();
+        if (combat != null && !combat.IsLocal) { combat.RequestDamage(hitsToDestroy); return; }
         if (currentHits <= 0 || IsProtected) return;
 
         currentHits = 0;
         Debug.Log(victim.name + " fue eliminado instantáneamente.");
 
         Refresh(0);
-        visibleTimer = hideAfterSeconds;
         OnHealthChanged?.Invoke(0, hitsToDestroy);
         Die();
+    }
+
+    // Las otras computadoras muestran el estado que decidió el dueño; no ejecutan otra reaparición.
+    public void ApplyReplicatedHealth(int value)
+    {
+        int next = Mathf.Clamp(value, 0, hitsToDestroy);
+        if (next == currentHits) return;
+        currentHits = next;
+        Refresh(currentHits);
+        OnHealthChanged?.Invoke(currentHits, hitsToDestroy);
     }
 
     private void Die()
@@ -162,8 +144,11 @@ public class DestructibleTarget : MonoBehaviour
         bool wasKinematic = rb != null && rb.isKinematic;
         if (rb != null)
         {
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
+            if (!rb.isKinematic)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
             rb.isKinematic = true;
         }
 
@@ -181,14 +166,15 @@ public class DestructibleTarget : MonoBehaviour
         {
             // Un componente "Missing Script" (de un script que borraste) llega como null.
             if (m == null) continue;
+            if (m is KartCombat || m is KartHealth || m is Photon.Pun.PhotonView || m is Photon.Pun.IPunObservable ||
+                (m.GetType().Namespace != null && m.GetType().Namespace.StartsWith("Photon."))) continue;
             if (m != this && m.enabled) { m.enabled = false; disabledScripts.Add(m); }
         }
 
         // 2) Esperar.
         yield return new WaitForSeconds(respawnDelay);
 
-        // 3) Elegir dónde reaparecer: el RespawnPoint más lejos de los enemigos,
-        //    o el lugar de inicio si no hay ninguno en la escena.
+        // 3) Pedir un punto al selector de reaparición de la escena.
         RespawnPoint point = RespawnPoint.GetBest(this);
         Vector3 pos = point != null ? point.transform.position : spawnPos;
         Quaternion rot = point != null ? point.transform.rotation : spawnRot;
@@ -213,8 +199,11 @@ public class DestructibleTarget : MonoBehaviour
         if (rb != null)
         {
             rb.isKinematic = wasKinematic;
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
+            if (!rb.isKinematic)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
         }
 
         // Avisarle al script de movimiento que se resetee (velocidad, giro, drift).
@@ -243,172 +232,94 @@ public class DestructibleTarget : MonoBehaviour
         return t;
     }
 
+    /// <summary>Restaura vida sin mantener un segundo contador en KartHealth.</summary>
+    public void HealHits(int amount)
+    {
+        var combat = GetComponent<KartCombat>();
+        if (combat != null && !combat.IsLocal) return;
+        if (amount <= 0 || !IsAlive) return;
+        int next = Mathf.Min(hitsToDestroy, currentHits + amount);
+        if (next == currentHits) return;
+        currentHits = next;
+        Refresh(currentHits);
+        OnHealthChanged?.Invoke(currentHits, hitsToDestroy);
+    }
+
+    private void BindHealthBar()
+    {
+        if (healthCanvas == null)
+        {
+            Transform existingCanvas = victim.transform.Find("HealthCanvas");
+            if (existingCanvas != null) healthCanvas = existingCanvas.GetComponent<Canvas>();
+        }
+        if (healthCanvas == null) return;
+        if (healthBar == null)
+        {
+            Transform existingBar = healthCanvas.transform.Find("HealthBar");
+            if (existingBar != null) healthBar = existingBar.GetComponent<Image>();
+        }
+        if (healthBar == null) return;
+
+        // Conserva los sprites originales; solo cambia cómo se recorta el relleno.
+        healthBar.type = Image.Type.Filled;
+        healthBar.fillMethod = Image.FillMethod.Horizontal;
+        healthBar.fillOrigin = (int)Image.OriginHorizontal.Left;
+        healthBar.fillAmount = 1f;
+        healthBar.raycastTarget = false;
+        targetFill = 1f;
+        fillVelocity = 0f;
+
+        var canvasRect = (RectTransform)healthCanvas.transform;
+        if (healthCanvas.renderMode != RenderMode.WorldSpace &&
+            (canvasRect.localScale.sqrMagnitude < 0.0001f || canvasRect.sizeDelta.sqrMagnitude < 0.0001f ||
+             (healthBar.rectTransform.sizeDelta.x <= 50f && healthBar.rectTransform.localScale.x < 2f)))
+        {
+            // El prefab original traía escala cero. Reutiliza su mismo Canvas e imágenes.
+            canvasRect.localScale = Vector3.one;
+            var scaler = healthCanvas.GetComponent<CanvasScaler>();
+            if (scaler != null)
+            {
+                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution = new Vector2(1280f, 720f);
+                scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+                scaler.matchWidthOrHeight = 0.5f;
+            }
+            foreach (Transform child in healthCanvas.transform)
+            {
+                var rect = child as RectTransform;
+                if (rect == null) continue;
+                Vector2 originalPosition = rect.anchoredPosition;
+                rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f);
+                rect.anchoredPosition = new Vector2(0f, -48f) + originalPosition * 4f;
+                rect.localScale *= 4f;
+                var graphic = child.GetComponent<Graphic>();
+                if (graphic != null) graphic.raycastTarget = false;
+            }
+        }
+        healthCanvas.gameObject.SetActive(showHealthBar);
+        UpdateCanvasVisibility();
+    }
+
     private void Refresh(int current)
     {
-        if (segments == null) return;
-        for (int i = 0; i < segments.Length; i++)
-        {
-            segments[i].color = i < current ? aliveColor : lostColor;
-        }
+        targetFill = Mathf.Clamp01(current / (float)Mathf.Max(1, hitsToDestroy));
+    }
+
+    private void UpdateCanvasVisibility()
+    {
+        if (healthCanvas == null) return;
+        bool isWorldBar = healthCanvas.renderMode == RenderMode.WorldSpace;
+        healthCanvas.enabled = showHealthBar &&
+            (isWorldBar || PowerUpDamage.IsLocallyControlled(victim));
     }
 
     private void LateUpdate()
     {
-        if (barRoot == null) return;
-
-        visibleTimer -= Time.deltaTime;
-        float targetAlpha = visibleTimer > 0f ? 1f : 0f;
-        group.alpha = Mathf.MoveTowards(group.alpha, targetAlpha, Time.deltaTime * fadeSpeed);
-        if (group.alpha <= 0.001f) return; // oculta: no gastamos nada
-
-        // Posición: arriba del punto más alto del kart.
-        Vector3 pos = victim.transform.position;
-        bool has = false;
-        Bounds b = default;
-        foreach (var r in bodyRenderers)
-        {
-            if (r == null) continue;
-            if (!has) { b = r.bounds; has = true; }
-            else b.Encapsulate(r.bounds);
-        }
-        if (has) { pos = b.center; pos.y = b.max.y; }
-        pos.y += extraHeight;
-        barRoot.position = pos;
-
-        // Mirar siempre a la cámara.
-        if (cam == null) cam = Camera.main;
-        if (cam != null) barRoot.rotation = cam.transform.rotation;
-    }
-
-    // ---------------------------------------------------------------
-    // Construcción de la barra (todo por código)
-    // ---------------------------------------------------------------
-    private void BuildBar(int count)
-    {
-        var go = new GameObject("HealthBar_" + victim.name, typeof(RectTransform));
-        barRoot = go.transform;
-
-        var canvas = go.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.WorldSpace;
-        group = go.AddComponent<CanvasGroup>();
-        group.blocksRaycasts = false;
-        group.interactable = false;
-        group.alpha = 0f; // arranca oculta
-
-        int totalW = HeartW + Gap + (count - 1) * Step + SegW;
-        var rt = (RectTransform)barRoot;
-        rt.sizeDelta = new Vector2(totalW * Px, HeartH * Px);
-        rt.pivot = new Vector2(0.5f, 0.5f);
-        float scale = barWorldWidth / (totalW * Px);
-        rt.localScale = new Vector3(scale, scale, scale);
-
-        var heart = CreateImage("Heart", rt, CreateHeartSprite());
-        SetRect(heart.rectTransform, 0f, HeartW, HeartH);
-
-        var segSprite = CreateSegmentSprite();
-        segments = new Image[count];
-        for (int i = 0; i < count; i++)
-        {
-            segments[i] = CreateImage("Segment" + i, rt, segSprite);
-            SetRect(segments[i].rectTransform, HeartW + Gap + i * Step, SegW, SegH);
-        }
-        Refresh(currentHits);
-    }
-
-    private static Image CreateImage(string name, RectTransform parent, Sprite sprite)
-    {
-        var go = new GameObject(name, typeof(RectTransform));
-        go.transform.SetParent(parent, false);
-        var img = go.AddComponent<Image>();
-        img.sprite = sprite;
-        img.raycastTarget = false;
-        return img;
-    }
-
-    private static void SetRect(RectTransform r, float xPixels, int wPixels, int hPixels)
-    {
-        r.anchorMin = r.anchorMax = new Vector2(0f, 0.5f);
-        r.pivot = new Vector2(0f, 0.5f);
-        r.anchoredPosition = new Vector2(xPixels * Px, 0f);
-        r.sizeDelta = new Vector2(wPixels * Px, hPixels * Px);
-    }
-
-    private static Sprite CreateHeartSprite()
-    {
-        string[] pattern =
-        {
-            "..XX...XX..",
-            ".XXXX.XXXX.",
-            "XXXXXXXXXXX",
-            "XXXXXXXXXXX",
-            "XXXXXXXXXXX",
-            ".XXXXXXXXX.",
-            "..XXXXXXX..",
-            "...XXXXX...",
-            "....XXX....",
-            ".....X....."
-        };
-
-        var tex = NewTexture(HeartW, HeartH);
-        bool[,] filled = new bool[HeartW, HeartH];
-        for (int row = 0; row < pattern.Length; row++)
-        {
-            for (int col = 0; col < pattern[row].Length; col++)
-            {
-                if (pattern[row][col] != 'X') continue;
-                filled[col + 1, HeartH - 1 - (row + 1)] = true;
-            }
-        }
-
-        Color fill = new Color(0.93f, 0.27f, 0.25f);
-        Color outline = new Color(0.38f, 0.08f, 0.10f);
-        Color shine = new Color(1f, 0.72f, 0.66f);
-
-        for (int x = 0; x < HeartW; x++)
-        {
-            for (int y = 0; y < HeartH; y++)
-            {
-                if (filled[x, y]) { tex.SetPixel(x, y, fill); continue; }
-                bool near =
-                    (x > 0 && filled[x - 1, y]) || (x < HeartW - 1 && filled[x + 1, y]) ||
-                    (y > 0 && filled[x, y - 1]) || (y < HeartH - 1 && filled[x, y + 1]);
-                if (near) tex.SetPixel(x, y, outline);
-            }
-        }
-        tex.SetPixel(3, HeartH - 3, shine);
-        tex.SetPixel(2, HeartH - 4, shine);
-
-        tex.Apply();
-        return Sprite.Create(tex, new Rect(0, 0, HeartW, HeartH), new Vector2(0.5f, 0.5f), 100f);
-    }
-
-    private static Sprite CreateSegmentSprite()
-    {
-        var tex = NewTexture(SegW, SegH);
-        Color outline = new Color(0.38f, 0.08f, 0.10f);
-
-        for (int y = 0; y < SegH; y++)
-        {
-            int shift = Mathf.RoundToInt(y * (Slant / (float)(SegH - 1)));
-            int xMin = shift;
-            int xMax = shift + (SegW - Slant) - 1;
-            for (int x = xMin; x <= xMax; x++)
-            {
-                bool edge = x == xMin || x == xMax || y == 0 || y == SegH - 1;
-                tex.SetPixel(x, y, edge ? outline : Color.white);
-            }
-        }
-
-        tex.Apply();
-        return Sprite.Create(tex, new Rect(0, 0, SegW, SegH), new Vector2(0.5f, 0.5f), 100f);
-    }
-
-    private static Texture2D NewTexture(int w, int h)
-    {
-        var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
-        tex.filterMode = FilterMode.Point;
-        tex.wrapMode = TextureWrapMode.Clamp;
-        tex.SetPixels(new Color[w * h]); // transparente
-        return tex;
+        UpdateCanvasVisibility();
+        if (healthBar == null) return;
+        healthBar.fillAmount = Mathf.SmoothDamp(healthBar.fillAmount, targetFill,
+            ref fillVelocity, Mathf.Max(0.01f, healthBarSmoothTime), Mathf.Infinity, Time.deltaTime);
+        if (Mathf.Abs(healthBar.fillAmount - targetFill) < 0.0001f)
+            healthBar.fillAmount = targetFill;
     }
 }

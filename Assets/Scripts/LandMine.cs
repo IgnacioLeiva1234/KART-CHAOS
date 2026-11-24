@@ -1,115 +1,116 @@
+using System.Collections.Generic;
+using Photon.Pun;
 using UnityEngine;
 
-/// <summary>
-/// Mina terrestre. Una vez colocada y armada, cualquier kart (que no sea
-/// el dueño) que la pise es destruido al instante.
-///
-/// Se configura sola: si le falta un Collider le agrega uno, lo fuerza a
-/// Trigger y le agrega un Rigidbody kinemático, así no depende de
-/// checkboxes del Inspector.
-///
-/// SETUP: ver KartMineLayer.cs (la mina se crea como Prefab y se asigna ahí).
-/// </summary>
-public class LandMine : MonoBehaviour
+/// <summary>Mina armada en el suelo. Activa Trial+explosion una sola vez y conserva el efecto hasta que termina.</summary>
+public class LandMine : NetworkHazard
 {
     [Header("Comportamiento")]
-    [Tooltip("Segundos hasta que la mina queda armada. Evita matar al instante a quien pasa justo al lado cuando se coloca.")]
     [SerializeField] private float armDelay = 1f;
-    [Tooltip("Si está tildado, el dueño también puede morir con su propia mina.")]
-    [SerializeField] private bool ownerCanTrigger = false;
-    [Tooltip("0 = dura para siempre. Si no, desaparece sola después de estos segundos.")]
-    [SerializeField] private float lifeTime = 0f;
-    [Tooltip("Radio de activación si la mina no trae un Collider propio.")]
+    [SerializeField] private bool ownerCanTrigger;
+    [SerializeField] private float lifeTime;
     [SerializeField] private float triggerRadius = 1.2f;
-
-    [Header("Feedback (opcional)")]
-    [SerializeField] private GameObject explosionVFXPrefab;
+    [SerializeField] private float explosionRadius = 3f;
+    [SerializeField] private int explosionDamage = 3;
+    [Header("Explosión")]
+    [SerializeField] private GameObject explosionEffect;
+    [SerializeField] private float effectDuration = 3f;
     [SerializeField] private AudioClip explosionSound;
-
-    private GameObject owner;
-    private float armTimer;
+    public bool HasExploded => exploded;
     private bool exploded;
+    private bool explosionRequested;
 
-    /// <summary>Lo llama KartMineLayer al colocarla.</summary>
-    public void SetOwner(GameObject kart)
+    protected override void Awake()
     {
-        owner = kart;
-    }
-
-    private void Awake()
-    {
-        // Collider: si no tiene, le ponemos uno; y siempre trigger.
-        Collider col = GetComponent<Collider>();
+        base.Awake();
+        if (explosionEffect == null)
+        {
+            var child = transform.Find("Trial+explosion");
+            if (child != null) explosionEffect = child.gameObject;
+        }
+        if (explosionEffect != null) explosionEffect.SetActive(false);
+        var col = GetComponent<Collider>();
         if (col == null)
         {
             var sphere = gameObject.AddComponent<SphereCollider>();
-            sphere.radius = triggerRadius;
+            sphere.radius = triggerRadius / Mathf.Max(.001f, Mathf.Max(transform.lossyScale.x, Mathf.Max(transform.lossyScale.y, transform.lossyScale.z)));
             col = sphere;
         }
         col.isTrigger = true;
-
-        // Para que Unity dispare los eventos de trigger contra cualquier kart,
-        // necesitamos un Rigidbody. Kinemático: no se mueve ni cae.
-        Rigidbody rb = GetComponent<Rigidbody>();
-        if (rb == null) rb = gameObject.AddComponent<Rigidbody>();
-        rb.isKinematic = true;
-        rb.useGravity = false;
-
-        armTimer = armDelay;
+        var body = GetComponent<Rigidbody>();
+        if (body == null) body = gameObject.AddComponent<Rigidbody>();
+        body.isKinematic = true;
+        body.useGravity = false;
     }
 
-    private void Start()
+    private void FixedUpdate()
     {
-        if (lifeTime > 0f) Destroy(gameObject, lifeTime);
+        if (exploded || explosionRequested || !HasAuthority) return;
+        if (lifeTime > 0f && Age >= lifeTime) { exploded = true; Despawn(); return; }
+        if (Age < armDelay) return;
+        // También detecta las copias cinemáticas de otros jugadores.
+        foreach (var col in Physics.OverlapSphere(transform.position + Vector3.up * .2f, triggerRadius, ~0, QueryTriggerInteraction.Ignore))
+        {
+            TryTrigger(col);
+            if (exploded) break;
+        }
     }
-
-    private void Update()
-    {
-        if (armTimer > 0f) armTimer -= Time.deltaTime;
-    }
-
-    private void OnTriggerEnter(Collider other)
-    {
-        TryTrigger(other);
-        Debug.Log ("AAAAAAAAAAAAAAAAAAAAAAAAAAAA");
-    }
-
-    // Por si un kart ya estaba encima cuando la mina terminó de armarse.
-    private void OnTriggerStay(Collider other)
-    {
-        TryTrigger(other);
-    }
-
+    private void OnTriggerEnter(Collider other) => TryTrigger(other);
+    private void OnTriggerStay(Collider other) => TryTrigger(other);
     private void TryTrigger(Collider other)
     {
-        if (exploded || armTimer > 0f) return;
-        if (!other.isTrigger) return; // ignorar otros triggers (pickups, proyectiles, etc.)
-
-        // Ignorar proyectiles: la mina no explota con balas.
-        if (other.GetComponentInParent<Projectile>() != null) return;
-
-        // Inmunidad del dueño.
-        if (!ownerCanTrigger && owner != null &&
-            (other.gameObject == owner || other.transform.IsChildOf(owner.transform)))
-            return;
-
-        DestructibleTarget target = DestructibleTarget.Find(other.transform);
-        if (target == null) return; // lo que pisó no es un kart
-
-        if (!ownerCanTrigger && owner != null &&
-            (target.transform.IsChildOf(owner.transform) || owner.transform.IsChildOf(target.transform)))
-            return;
-
+        if (exploded || explosionRequested || !HasAuthority || Age < armDelay || other.isTrigger || other.transform.IsChildOf(transform)) return;
+        if (!ownerCanTrigger && BelongsToOwner(other.transform)) return;
+        var target = DestructibleTarget.Find(other.transform);
+        if (target == null || !target.IsAlive || target.IsProtected) return;
+        if (!ownerCanTrigger && PowerUpDamage.IsOwner(target, Owner)) return;
+        explosionRequested = true;
+        Vector3 position = transform.position;
+        // La autoridad decide a quién alcanzó la explosión una sola vez. El RPC guardado
+        // reproduce únicamente el efecto para quienes entren tarde a la sala.
+        var targets = new HashSet<DestructibleTarget>();
+        foreach (var col in Physics.OverlapSphere(position, explosionRadius, ~0, QueryTriggerInteraction.Ignore))
+        {
+            var victim = DestructibleTarget.Find(col.transform);
+            if (victim != null && targets.Add(victim))
+                PowerUpDamage.RequestHits(victim, explosionDamage, ownerCanTrigger ? null : Owner);
+        }
+        if (IsNetworked) NetworkView.RPC(nameof(Explode), RpcTarget.AllBuffered, position, Now);
+        else Explode(position, Now, default);
+    }
+    [PunRPC]
+    private void Explode(Vector3 position, double when, PhotonMessageInfo info)
+    {
+        if (exploded || !ValidSender(info)) return;
         exploded = true;
-        Debug.Log("¡Mina activada! Eliminando a " + target.name);
-
-        target.Kill();
-
-        if (explosionVFXPrefab != null)
-            Instantiate(explosionVFXPrefab, transform.position, Quaternion.identity);
-        if (explosionSound != null)
-            AudioSource.PlayClipAtPoint(explosionSound, transform.position);
-
-        Destroy(gameObject);
+        explosionRequested = true;
+        foreach (var col in GetComponentsInChildren<Collider>(true)) col.enabled = false;
+        foreach (var renderer in GetComponentsInChildren<Renderer>(true))
+            if (explosionEffect == null || !renderer.transform.IsChildOf(explosionEffect.transform)) renderer.enabled = false;
+        float duration = Mathf.Max(.2f, effectDuration);
+        float elapsed = Mathf.Max(0f, (float)(Now - when));
+        if (explosionEffect != null)
+        {
+            var systems = explosionEffect.GetComponentsInChildren<ParticleSystem>(true);
+            foreach (var ps in systems)
+            {
+                ps.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
+                var main = ps.main;
+                main.loop = false;
+                duration = Mathf.Max(duration, main.duration + main.startLifetime.constantMax + .2f);
+            }
+            if (elapsed < duration)
+            {
+                explosionEffect.SetActive(true);
+                foreach (var ps in systems)
+                {
+                    ps.Simulate(elapsed, false, true);
+                    // No reiniciar una ráfaga que ya terminó al recibir el RPC tarde.
+                    if (elapsed <= 0f || ps.IsAlive(false)) ps.Play(false);
+                }
+            }
+        }
+        if (explosionSound != null && elapsed < .5f) AudioSource.PlayClipAtPoint(explosionSound, position);
+        Despawn(Mathf.Max(0f, duration - elapsed));
     }
 }

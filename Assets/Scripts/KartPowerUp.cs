@@ -11,7 +11,9 @@ public enum PowerUpType
 {
     None = 0,
     Cannon = 1,
-    Mine = 2
+    Mine = 2,
+    Molotov = 3,
+    Turret = 4
 }
 
 
@@ -32,6 +34,17 @@ public abstract class KartPowerUp : MonoBehaviour
 
     public abstract PowerUpType Type { get; }
     public abstract string DisplayName { get; }
+
+    public virtual bool IsReady => isActiveAndEnabled;
+    public virtual bool UsesCharge => false;
+    public virtual int ShotsPerUse => 1;
+    public virtual float ShotInterval => 0f;
+    public virtual int PickupAmmoMultiplier => 1;
+
+    public virtual bool BeginCharge(GameObject owner) => false;
+    public virtual void UpdateCharge(GameObject owner, float dt) { }
+    public virtual bool ReleaseCharge(GameObject owner) => false;
+    public virtual void CancelCharge() { }
 
 
     /// <summary>

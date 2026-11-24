@@ -23,6 +23,7 @@ public class CannonPowerUp : KartPowerUp
 
     public override PowerUpType Type => PowerUpType.Cannon;
     public override string DisplayName => "Cañón";
+    public override bool IsReady => firePoint != null && projectilePrefab != null;
 
     public override bool Use(GameObject owner)
     {
@@ -34,10 +35,8 @@ public class CannonPowerUp : KartPowerUp
             return false;
         }
 
-        GameObject proj = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
-
-        Projectile projectile = proj.GetComponent<Projectile>();
-        if (projectile != null) projectile.SetOwner(owner);
+        GameObject proj = PowerUpNetwork.Spawn(projectilePrefab, firePoint.position, firePoint.rotation, owner);
+        if (proj == null) return false;
 
         StartCooldown(fireCooldown);
 

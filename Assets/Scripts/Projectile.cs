@@ -1,125 +1,72 @@
+using Photon.Pun;
 using UnityEngine;
 
-/// <summary>
-/// Proyectil simple estilo Mario Kart: viaja en línea recta a velocidad
-/// constante en la dirección en la que fue lanzado (no le afecta la
-/// gravedad ni la física del kart que lo disparó).
-///
-/// SETUP EN EL EDITOR:
-/// 1. Creá un GameObject para el proyectil (una esfera, un cono, o tu
-///    modelo de caparazón/misil). Escalalo a un tamaño razonable (chico).
-/// 2. Agregale un Rigidbody: Use Gravity = DESTILDADO (para que vaya recto
-///    sin caer), Collision Detection = Continuous (para que no atraviese
-///    paredes finas a alta velocidad).
-/// 3. Agregale un Collider marcado como "Is Trigger" SI querés que atraviese
-///    sin frenar (y detectar el golpe por script), o sin trigger si querés
-///    que la física choque de verdad. Este script usa OnTriggerEnter, así
-///    que dejalo tildado como Trigger.
-/// 4. Agregale este script "Projectile.cs".
-/// 5. Convertí ese GameObject en un Prefab (arrastralo a la carpeta
-///    Assets/Prefabs) y borralo de la escena. Ese Prefab es lo que
-///    vas a asignar en KartShooter.
-/// </summary>
+/// <summary>Cohete recto. Solo su dueño detecta el impacto; el daño llega al dueño del kart alcanzado.</summary>
 [RequireComponent(typeof(Rigidbody))]
-public class Projectile : MonoBehaviour
+public class Projectile : NetworkHazard
 {
-    [Header("Movimiento")]
     [SerializeField] private float speed = 40f;
-    [SerializeField] private float lifeTime = 5f; // se autodestruye si no choca con nada antes de esto
+    [SerializeField] private float lifeTime = 5f;
+    [SerializeField] private float collisionRadius = .25f;
+    [SerializeField] private GameObject impactVFXPrefab;
+    [SerializeField, Min(.1f)] private float impactVFXLifetime = 4f;
+    private Vector3 origin, velocity, previousPosition;
+    private bool hasHit;
+    private bool impactRequested;
 
-    [Header("Daño / impacto (opcional)")]
-    [SerializeField] private float damage = 20f;
-    [SerializeField] private GameObject impactVFXPrefab; // partícula de explosión al chocar (opcional)
-
-    [Header("Quién lo disparó")]
-    [SerializeField] private GameObject owner; // se asigna desde KartShooter al instanciar, para no autoimpactarse
-
-    private Rigidbody rb;
-    private bool hasHit; // evita contar dos impactos si toca dos colliders del mismo kart en el mismo frame
-
-    private void Awake()
+    protected override void Awake()
     {
-        rb = GetComponent<Rigidbody>();
-        rb.useGravity = false;
-        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        base.Awake();
+        var body = GetComponent<Rigidbody>();
+        body.collisionDetectionMode = CollisionDetectionMode.Discrete;
+        body.interpolation = RigidbodyInterpolation.None;
+        body.isKinematic = true;
+        body.useGravity = false;
     }
-
-    private void Start()
+    protected override void OnSpawnData(object[] payload)
     {
-        // Dispara en línea recta hacia donde apunta el transform (su "forward").
-        rb.linearVelocity = transform.forward * speed;
-        Destroy(gameObject, lifeTime);
+        origin = previousPosition = transform.position;
+        velocity = transform.forward * speed;
     }
-
-    /// <summary>Llamado por KartShooter justo después de instanciar el proyectil.</summary>
-    public void SetOwner(GameObject shooter)
+    private void FixedUpdate()
     {
-        owner = shooter;
-    }
-
-    private void OnTriggerEnter(Collider other)
-    {
-        // Otros triggers (minas, pickups de munición, zonas) no son sólidos:
-        // el proyectil los atraviesa sin destruirse.
-        if (other.isTrigger) return;
-
-        HandleHit(other.gameObject);
-    }
-
-    private void OnCollisionEnter(Collision collision)
-    {
-        // Respaldo: si el collider del proyectil o del objetivo NO está
-        // marcado como Trigger, Unity llama a esta función en vez de
-        // OnTriggerEnter. Así el impacto se detecta de las dos formas,
-        // sin depender de que ese checkbox esté bien configurado.
-        HandleHit(collision.gameObject);
-    }
-
-    private void HandleHit(GameObject hit)
-    {
-        // No impactar contra quien lo disparó.
-        if (owner != null && (hit == owner || hit.transform.IsChildOf(owner.transform)))
+        if (!IsInitialized || hasHit || impactRequested) return;
+        Vector3 position = origin + velocity * Age;
+        if (HasAuthority && MolotovTrajectory.FirstHit(previousPosition, position, collisionRadius, Owner, transform, out var hit))
+        {
+            impactRequested = true;
+            var target = DestructibleTarget.Find(hit.collider.transform);
+            PowerUpDamage.RequestHits(target, 1, Owner);
+            if (IsNetworked) NetworkView.RPC(nameof(ShowImpact), RpcTarget.All, hit.point);
+            else ShowImpact(hit.point, default);
+            Despawn(.1f);
             return;
-
-        // Ignorar otros proyectiles entre sí.
-        if (hit.GetComponent<Projectile>() != null)
-            return;
-
-        if (hasHit) return;
+        }
+        transform.position = previousPosition = position;
+        if (HasAuthority && Age >= lifeTime) { hasHit = true; Despawn(); }
+    }
+    [PunRPC]
+    private void ShowImpact(Vector3 position, PhotonMessageInfo info)
+    {
+        if (hasHit || !ValidSender(info)) return;
         hasHit = true;
-
-        Debug.Log("Proyectil impactó contra: " + hit.name); // podés borrar esta línea después
-
-        // Avisar al objetivo (el kart o su padre) que recibió un impacto.
-        var target = hit.GetComponentInParent<DestructibleTarget>();
-        if (target == null)
-        {
-            // Respaldo: si el componente quedó en un hijo/vecino del mismo kart,
-            // lo buscamos subiendo hasta 3 niveles y mirando los hijos de cada uno.
-            Transform t = hit.transform;
-            for (int i = 0; i < 3 && t != null && target == null; i++)
-            {
-                target = t.GetComponentInChildren<DestructibleTarget>();
-                t = t.parent;
-            }
-        }
-
-        if (target != null)
-        {
-            target.TakeHit();
-        }
-        else
-        {
-            Debug.LogWarning("El proyectil impactó contra '" + hit.name +
-                "' pero ni ese objeto ni sus padres tienen el componente DestructibleTarget. " +
-                "Por eso no baja la vida: agregáselo a la raíz del kart.");
-        }
-
+        foreach (var renderer in GetComponentsInChildren<Renderer>()) renderer.enabled = false;
+        foreach (var col in GetComponentsInChildren<Collider>()) col.enabled = false;
         if (impactVFXPrefab != null)
         {
-            Instantiate(impactVFXPrefab, transform.position, Quaternion.identity);
+            var effect = Instantiate(impactVFXPrefab, position, Quaternion.identity);
+            effect.SetActive(true);
+            float duration = Mathf.Max(.1f, impactVFXLifetime);
+            foreach (var particles in effect.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                var main = particles.main;
+                main.loop = false;
+                duration = Mathf.Max(duration, main.startDelay.constantMax + main.duration + main.startLifetime.constantMax);
+                particles.gameObject.SetActive(true);
+                particles.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
+                particles.Play(false);
+            }
+            Destroy(effect, duration);
         }
-
-        Destroy(gameObject);
     }
 }
