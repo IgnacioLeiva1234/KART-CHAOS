@@ -3,6 +3,7 @@ using Photon.Realtime;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using Hashtable = ExitGames.Client.Photon.Hashtable;
 
 /// <summary>El anfitrión elige el mapa y PUN lleva a toda la sala a esa escena.</summary>
@@ -30,21 +31,43 @@ public class MapSelection : MonoBehaviourPunCallbacks
     public void SelectDustyTerrain() { SelectMap("DustyTerrain"); }
     public void SelectLargeRoad() { SelectMap("LargeRoad"); }
 
+    public override void OnJoinedRoom()
+    {
+        RefreshStatus();
+        LoadSelectedMapIfMaster();
+    }
+
     private void SelectMap(string sceneName)
     {
         if (loading || !PhotonNetwork.InRoom || !PhotonNetwork.IsMasterClient || !IsPlayableMap(sceneName)) return;
         // Guardar la elección permite recuperarla incluso si cambia el anfitrión.
         loading = true;
-        PhotonNetwork.CurrentRoom.SetCustomProperties(new Hashtable { { MapProperty, sceneName } });
+        bool saved = PhotonNetwork.CurrentRoom.SetCustomProperties(new Hashtable
+        {
+            { MapProperty, sceneName },
+            { CarSelectionState.PhaseProperty, CarSelectionState.CarPhase }
+        });
+        if (!saved)
+        {
+            loading = false;
+            Debug.LogWarning("No se pudo confirmar el mapa. Intentá nuevamente cuando vuelva la conexión.");
+            RefreshStatus();
+            return;
+        }
         RefreshStatus();
-        PhotonNetwork.LoadLevel(sceneName);
+        PhotonNetwork.LoadLevel(CarSelectionState.SelectionScene);
     }
 
     private void LoadSelectedMapIfMaster()
     {
         if (loading || !PhotonNetwork.InRoom || !PhotonNetwork.IsMasterClient) return;
         string sceneName = PhotonNetwork.CurrentRoom.CustomProperties[MapProperty] as string;
-        if (IsPlayableMap(sceneName)) SelectMap(sceneName);
+        if (IsPlayableMap(sceneName))
+        {
+            loading = true;
+            RefreshStatus();
+            PhotonNetwork.LoadLevel(CarSelectionState.SceneForRoom(PhotonNetwork.CurrentRoom.CustomProperties));
+        }
     }
 
     public override void OnMasterClientSwitched(Player newMasterClient)
@@ -55,12 +78,25 @@ public class MapSelection : MonoBehaviourPunCallbacks
 
     public override void OnRoomPropertiesUpdate(Hashtable propertiesThatChanged)
     {
-        if (propertiesThatChanged.ContainsKey(MapProperty)) RefreshStatus();
+        if (propertiesThatChanged.ContainsKey(MapProperty) || propertiesThatChanged.ContainsKey(CarSelectionState.PhaseProperty))
+        {
+            RefreshStatus();
+            LoadSelectedMapIfMaster();
+        }
     }
 
     public override void OnDisconnected(DisconnectCause cause)
     {
+        loading = false;
         RefreshStatus();
+        ConnectionFeedback.Show(this, "Se perdió la conexión con Photon. Podés volver a conectarte.",
+            () => SceneManager.LoadScene("LoadingScene"));
+    }
+
+    public override void OnLeftRoom()
+    {
+        PhotonNetwork.LocalPlayer.SetCustomProperties(CarSelectionState.ResetProperties());
+        SceneManager.LoadScene("Lobby");
     }
 
     private void RefreshStatus()
@@ -72,7 +108,7 @@ public class MapSelection : MonoBehaviourPunCallbacks
         if (!PhotonNetwork.InRoom)
             statusText.text = "Entrá a una sala desde el Lobby para elegir el mapa.";
         else if (loading)
-            statusText.text = "Cargando mapa para toda la sala…";
+            statusText.text = "Preparando la selección de autos…";
         else if (PhotonNetwork.IsMasterClient)
             statusText.text = "Sos el anfitrión. Elegí dónde jugará toda la sala.";
         else

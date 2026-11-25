@@ -51,5 +51,9 @@ public class OutOfBoundsSurface : MonoBehaviour
             target.Kill();
     }
 
+    private void OnAirRotate() {
+        
+    }
+
     private void OnDisable() { touching.Clear(); }
 }

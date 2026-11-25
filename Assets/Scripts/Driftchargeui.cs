@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using Photon.Pun;
 
 /// <summary>
 /// Barra de carga del derrape (mini-turbo). Lee kart.DriftCharge01 cada
@@ -43,23 +44,111 @@ public class DriftChargeUI : MonoBehaviour
 
     private RectTransform fillRect;
     private float pulseT;
+    private CanvasGroup visibility;
+    private float nextKartSearch;
 
     private void Awake()
     {
+        PrepareVisuals();
+    }
+
+    private void PrepareVisuals()
+    {
         if (fillImage != null) fillRect = fillImage.rectTransform;
+        if (root != null)
+        {
+            visibility = root.GetComponent<CanvasGroup>();
+            if (visibility == null) visibility = root.AddComponent<CanvasGroup>();
+            visibility.blocksRaycasts = false;
+            visibility.interactable = false;
+            visibility.alpha = kart != null && (!hideWhenNotDrifting || kart.IsDrifting) ? 1f : 0f;
+        }
+    }
+
+    /// <summary>Activa solamente el HUD de la escena del kart que controla este equipo.</summary>
+    public static void BindSceneToLocalKart(KartController localKart)
+    {
+        if (!IsLocalKart(localKart)) return;
+        var scene = localKart.gameObject.scene;
+        if (!scene.IsValid() || !scene.isLoaded) return;
+        if (PhotonNetwork.InRoom)
+        {
+            string expectedMap = PhotonNetwork.CurrentRoom.CustomProperties[MapSelection.MapProperty] as string;
+            if (MapSelection.IsPlayableMap(expectedMap) && scene.name != expectedMap) return;
+        }
+        foreach (DriftChargeUI hud in FindObjectsByType<DriftChargeUI>(FindObjectsInactive.Include))
+        {
+            if (hud.gameObject.scene != scene) continue;
+            KartController parentKart = hud.GetComponentInParent<KartController>(true);
+            if (parentKart != null && parentKart != localKart) continue;
+            hud.BindToLocalKart(localKart);
+        }
+    }
+
+    public void BindToLocalKart(KartController localKart)
+    {
+        if (!IsLocalKart(localKart) || gameObject.scene != localKart.gameObject.scene) return;
+        KartController parentKart = GetComponentInParent<KartController>(true);
+        if (parentKart != null && parentKart != localKart) return;
+        if (kart == localKart && isActiveAndEnabled && fillImage != null && fillImage.isActiveAndEnabled) return;
+
+        kart = localKart;
+        // Puede llamarse antes de Awake: el objeto estaba desactivado en la escena.
+        PrepareVisuals();
+        if (fillImage != null)
+        {
+            fillImage.type = Image.Type.Filled;
+            fillImage.enabled = true;
+            fillImage.raycastTarget = false;
+            fillImage.fillAmount = kart.DriftCharge01;
+            fillImage.color = GetColorForCharge(kart.DriftCharge01);
+            ActivateUIBranch(fillImage.transform);
+        }
+        if (root != null) ActivateUIBranch(root.transform);
+        ActivateUIBranch(transform);
+        enabled = true;
+    }
+
+    private static void ActivateUIBranch(Transform leaf)
+    {
+        Canvas canvas = leaf.GetComponentInParent<Canvas>(true);
+        if (canvas == null) { leaf.gameObject.SetActive(true); return; }
+        // No activa hermanos, otros karts ni ancestros externos al Canvas.
+        for (Transform node = leaf; node != null; node = node.parent)
+        {
+            node.gameObject.SetActive(true);
+            if (node == canvas.transform) break;
+        }
+        canvas.enabled = true;
     }
 
     private void Update()
     {
-        if (kart == null || fillImage == null) return;
+        if (!IsLocalKart(kart))
+        {
+            kart = null;
+            if (Time.unscaledTime >= nextKartSearch)
+            {
+                nextKartSearch = Time.unscaledTime + .25f;
+                foreach (KartController candidate in FindObjectsByType<KartController>())
+                    if (IsLocalKart(candidate)) { kart = candidate; break; }
+            }
+        }
+        if (kart == null || fillImage == null)
+        {
+            if (visibility != null) visibility.alpha = 0f;
+            return;
+        }
 
         float charge = kart.DriftCharge01;
         bool drifting = kart.IsDrifting;
 
         // mostrar/ocultar toda la barra según si se está derrapando
-        if (root != null && hideWhenNotDrifting)
+        if (visibility != null)
         {
-            root.SetActive(drifting);
+            // El script vive en root en las escenas existentes. Desactivarlo
+            // impediría ejecutar Update y volver a mostrar la barra.
+            visibility.alpha = !hideWhenNotDrifting || drifting ? 1f : 0f;
         }
 
         fillImage.fillAmount = charge;
@@ -80,6 +169,15 @@ public class DriftChargeUI : MonoBehaviour
                 fillRect.localScale = Vector3.one;
             }
         }
+    }
+
+    private static bool IsLocalKart(KartController candidate)
+    {
+        if (candidate == null || !candidate.isActiveAndEnabled) return false;
+        if (!PhotonNetwork.InRoom) return true;
+        PhotonView view = candidate.GetComponent<PhotonView>();
+        return view != null && view.InstantiationId > 0 && !view.IsRoomView &&
+               view.OwnerActorNr == PhotonNetwork.LocalPlayer.ActorNumber;
     }
 
     private Color GetColorForCharge(float charge)

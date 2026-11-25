@@ -13,6 +13,8 @@ public class PowerUpPickup : MonoBehaviour, IPunObservable
     [SerializeField] private float respawnTime = 10f;
     [SerializeField] private float triggerRadius = 1.5f;
     [Header("Efecto visual")]
+    [SerializeField] private GameObject pickupVisual;
+    [SerializeField] private AnimationClip collectClip;
     [SerializeField] private float rotateSpeed = 90f;
     [SerializeField] private float bobAmplitude = .2f;
     [SerializeField] private float bobSpeed = 2f;
@@ -48,7 +50,8 @@ public class PowerUpPickup : MonoBehaviour, IPunObservable
         if (rb == null) rb = gameObject.AddComponent<Rigidbody>();
         rb.isKinematic = true;
         rb.useGravity = false;
-        renderers = GetComponentsInChildren<Renderer>(true);
+        renderers = (pickupVisual != null ? pickupVisual : gameObject).GetComponentsInChildren<Renderer>(true);
+        if (pickupVisual != null && collectClip != null) collectClip.SampleAnimation(pickupVisual, 0f);
     }
 
     private void Update()
@@ -56,7 +59,11 @@ public class PowerUpPickup : MonoBehaviour, IPunObservable
         if (collected)
         {
             if (Now >= availableAt) SetCollected(false);
-            else return;
+            else
+            {
+                UpdateCollectionVisual();
+                return;
+            }
         }
         transform.Rotate(Vector3.up, rotateSpeed * Time.deltaTime, Space.World);
         float phase = PhotonNetwork.InRoom ? (float)(PhotonNetwork.Time % 10000d) : Time.time;
@@ -155,10 +162,23 @@ public class PowerUpPickup : MonoBehaviour, IPunObservable
 
     private void SetCollected(bool value)
     {
+        if (collected == value) return;
         collected = value;
         if (col != null) col.enabled = !value;
-        if (renderers == null) return;
-        foreach (var renderer in renderers) if (renderer != null) renderer.enabled = !value;
+        if (value) UpdateCollectionVisual();
+        else
+        {
+            if (pickupVisual != null && collectClip != null) collectClip.SampleAnimation(pickupVisual, 0f);
+            foreach (var renderer in renderers) renderer.enabled = true;
+        }
+    }
+
+    private void UpdateCollectionVisual()
+    {
+        float elapsed = Mathf.Max(0f, (float)(Now - availableAt) + Mathf.Max(.1f, respawnTime));
+        bool playing = pickupVisual != null && collectClip != null && elapsed < collectClip.length;
+        if (playing) collectClip.SampleAnimation(pickupVisual, elapsed);
+        foreach (var renderer in renderers) renderer.enabled = playing;
     }
 
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)

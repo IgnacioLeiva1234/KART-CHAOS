@@ -20,7 +20,7 @@ MonoBehaviour:
     AppIdVideo: 
     AppVersion: 
     UseNameServer: 1
-    FixedRegion: 
+    FixedRegion: sa
     Server: 
     Port: 0
     ProxyServer: 
@@ -46,6 +46,7 @@ MonoBehaviour:
   - RequestCollect
   - Explode
   - ShowImpact
+  - ReceiveKartBump
   DisableAutoOpenWizard: 1
   ShowSettings: 0
   DevRegionSetOnce: 0

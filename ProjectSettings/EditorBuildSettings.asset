@@ -15,6 +15,9 @@ EditorBuildSettings:
     path: Assets/Scenes/MapSelection.unity
     guid: 449e6bf81e1bef146aa9460575741299
   - enabled: 1
+    path: Assets/Scenes/CarSelection.unity
+    guid: c39c60b73fe264848b9bc656cee8914d
+  - enabled: 1
     path: Assets/Scenes/DustyTerrain.unity
     guid: 851a12a8f9bf63840806948982a4c857
   - enabled: 1

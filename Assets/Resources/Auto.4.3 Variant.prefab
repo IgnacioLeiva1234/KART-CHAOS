@@ -373,6 +373,7 @@ MonoBehaviour:
   naturalFriction: 8
   turnRate: 75
   groundProbeDistance: 0.25
+  maxGroundStepHeight: 0.18
   maxGroundAngle: 60
   groundAlignmentSpeed: 12
   groundLayers:
@@ -457,11 +458,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: PhotonUnityNetworking::Photon.Pun.PhotonTransformViewClassic
   m_PositionModel:
     SynchronizeEnabled: 1
-    TeleportEnabled: 0
-    TeleportIfDistanceGreaterThan: 3
-    InterpolateOption: 2
+    TeleportEnabled: 1
+    TeleportIfDistanceGreaterThan: 10
+    InterpolateOption: 4
     InterpolateMoveTowardsSpeed: 1
-    InterpolateLerpSpeed: 1
+    InterpolateLerpSpeed: 16
     ExtrapolateOption: 0
     ExtrapolateSpeed: 1
     ExtrapolateIncludingRoundTripTime: 1
