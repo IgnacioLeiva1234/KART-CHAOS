@@ -1,0 +1,81 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &5649273204779801921
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 861178003328325375, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.778
+      objectReference: {fileID: 0}
+    - target: {fileID: 861178003328325375, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -2.306
+      objectReference: {fileID: 0}
+    - target: {fileID: 7727272731087295875, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.785
+      objectReference: {fileID: 0}
+    - target: {fileID: 7727272731087295875, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -2.232
+      objectReference: {fileID: 0}
+    - target: {fileID: 8304318310703107749, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8304318310703107749, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8304318310703107749, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8304318310703107749, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8304318310703107749, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8304318310703107749, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8304318310703107749, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8304318310703107749, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8304318310703107749, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8304318310703107749, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8679858347937846303, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: m_Name
+      value: NissanR34
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects:
+    - {fileID: 4917746319925278959, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+    - {fileID: 6453275026007436685, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+    - {fileID: 6075163759579304733, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+    - {fileID: 3066815669914723957, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+    - {fileID: 892301492853221726, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+    - {fileID: 8699374494639380883, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}

@@ -1,2 +1,12 @@
 fileFormatVersion: 2
 guid: aefaa693daf27ce4cbfe5e8ed1c6dbb6
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - flameStreamPrefab: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

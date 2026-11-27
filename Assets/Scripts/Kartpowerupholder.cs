@@ -16,6 +16,8 @@ public class KartPowerUpHolder : MonoBehaviour
     [Header("Solo lectura")]
     [SerializeField] private PowerUpType currentType = PowerUpType.None;
     [SerializeField] private int ammo;
+    [Header("GUI")]
+    [SerializeField] private Font fontFamily;
 
     public event Action<PowerUpType, int> OnPowerUpChanged;
     public PowerUpType CurrentType => currentType;
@@ -169,6 +171,7 @@ public class KartPowerUpHolder : MonoBehaviour
         {
             labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 22, fontStyle = FontStyle.Bold };
             labelStyle.normal.textColor = Color.white;
+            labelStyle.font = fontFamily;
         }
         string text = "Power-up: ninguno";
         if (currentType != PowerUpType.None && powerUps.TryGetValue(currentType, out var powerUp))

@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
+using System;
+using System.Numerics;
 
 /// <summary>Reaparece el kart al tocar el terreno que está fuera de la ruta.</summary>
 [DisallowMultipleComponent]
@@ -15,6 +17,10 @@ public class OutOfBoundsSurface : MonoBehaviour
     private void OnCollisionEnter(Collision collision) { Register(collision); }
     private void OnCollisionStay(Collision collision) { Register(collision); }
     private void OnCollisionExit(Collision collision) { touching.Remove(collision.collider); }
+
+    //Para aplicar las físicas a un auto chocado o suspendido en el aire
+    private Rigidbody rb;
+    private bool withGravity;
 
     private void Register(Collision collision)
     {
@@ -51,8 +57,9 @@ public class OutOfBoundsSurface : MonoBehaviour
             target.Kill();
     }
 
-    private void OnAirRotate() {
-        
+    private void OnAirApplyPhysics() {
+        //arcoseno del valor del vector del eje x (0,1)
+
     }
 
     private void OnDisable() { touching.Clear(); }

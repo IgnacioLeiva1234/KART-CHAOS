@@ -6557,6 +6557,42 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 8679858347937846303, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
   m_PrefabInstance: {fileID: 3780592930513385997}
   m_PrefabAsset: {fileID: 0}
+--- !u!328 &2013864031
+VideoPlayer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2013864016}
+  m_Enabled: 1
+  m_VideoClip: {fileID: 32900000, guid: 8d726fb693b2b7349bf1c4a47f582488, type: 3}
+  m_TargetCameraAlpha: 1
+  m_TargetCamera3DLayout: 0
+  m_TargetCamera: {fileID: 0}
+  m_TargetTexture: {fileID: 0}
+  m_TimeReference: 0
+  m_TargetMaterialRenderer: {fileID: 0}
+  m_TargetMaterialProperty: <noninit>
+  m_RenderMode: 2
+  m_AspectRatio: 2
+  m_DataSource: 0
+  m_TimeUpdateMode: 2
+  m_PlaybackSpeed: 1
+  m_AudioOutputMode: 2
+  m_TargetAudioSources:
+  - {fileID: 0}
+  m_DirectAudioVolumes:
+  - 1
+  m_Url: 
+  m_EnabledAudioTracks: 01
+  m_DirectAudioMutes: 00
+  m_ControlledAudioTrackCount: 1
+  m_PlayOnAwake: 1
+  m_SkipOnDrop: 1
+  m_Looping: 0
+  m_WaitForFirstFrame: 1
+  m_FrameReadyEventEnabled: 0
+  m_VideoShaders: []
 --- !u!1 &2041224811
 GameObject:
   m_ObjectHideFlags: 0
@@ -6894,6 +6930,18 @@ PrefabInstance:
       propertyPath: m_PositionModel.TeleportEnabled
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 5962196228927638686, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.025
+      objectReference: {fileID: 0}
+    - target: {fileID: 5962196228927638686, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -1.571
+      objectReference: {fileID: 0}
+    - target: {fileID: 6936525392265045008, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: arcHeight
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 7126139549178654597, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
       propertyPath: minePrefab
       value: 
@@ -6951,9 +6999,29 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8596401558990852962, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: maxSpeed
+      value: 18
+      objectReference: {fileID: 0}
+    - target: {fileID: 8596401558990852962, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: turnRate
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 8596401558990852962, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
       propertyPath: spawnPlayers
       value: 
       objectReference: {fileID: 549887438}
+    - target: {fileID: 8596401558990852962, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: naturalFriction
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8596401558990852962, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: reverseMaxSpeed
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 8596401558990852962, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      propertyPath: driftTurnMultiplier
+      value: 1.5
+      objectReference: {fileID: 0}
     - target: {fileID: 8596401558990852962, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
       propertyPath: skidTrails.Array.size
       value: 2
@@ -6973,8 +7041,58 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8679858347937846303, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2013864031}
+    - targetCorrespondingSourceObject: {fileID: 922986000860274628, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3780592930513386000}
+    - targetCorrespondingSourceObject: {fileID: 922986000860274628, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3780592930513385999}
   m_SourcePrefab: {fileID: 100100000, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+--- !u!1 &3780592930513385998 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 922986000860274628, guid: b903888c5efb05e4eafec647b7663cd8, type: 3}
+  m_PrefabInstance: {fileID: 3780592930513385997}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &3780592930513385999
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3780592930513385998}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b79f912315d0da9439964df879b79559, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
+  ignitesWithMolotov: 1
+--- !u!136 &3780592930513386000
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3780592930513385998}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.000009999999
+  m_Height: 0.00002
+  m_Direction: 1
+  m_Center: {x: 0.0000009536743, y: 0, z: 0.0000076293945}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
