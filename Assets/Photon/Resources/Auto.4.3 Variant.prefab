@@ -311,6 +311,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 2358378419831649942, guid: 4db2d51460e3e9f48a356c138a21e9b9, type: 3}
       insertIndex: -1
       addedObject: {fileID: 9057338699127896450}
+    - targetCorrespondingSourceObject: {fileID: 2358378419831649942, guid: 4db2d51460e3e9f48a356c138a21e9b9, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5963366850835502651}
   m_SourcePrefab: {fileID: 100100000, guid: 4db2d51460e3e9f48a356c138a21e9b9, type: 3}
 --- !u!4 &1198409508230026187 stripped
 Transform:
@@ -371,17 +374,19 @@ MonoBehaviour:
   acceleration: 12
   brakeForce: 22
   naturalFriction: 8
-  turnRate: 75
+  turnRate: 130
   groundProbeDistance: 0.25
   maxGroundStepHeight: 0.18
   maxGroundAngle: 60
   groundAlignmentSpeed: 12
+  groundNormalSmoothing: 8
+  maxGroundRotationSpeed: 110
   groundLayers:
     serializedVersion: 2
     m_Bits: 4294967295
   minDriftSpeed: 5
   driftTurnMultiplier: 1.2
-  driftSlipLerpSpeed: 5
+  driftSlipLerpSpeed: 8
   gripLerpSpeed: 10
   driftRecoveryTime: 0.25
   driftChargeTime: 1.6
@@ -508,6 +513,7 @@ MonoBehaviour:
   showDebugLabel: 1
   currentType: 0
   ammo: 0
+  fontFamily: {fileID: 0}
 --- !u!114 &9161498807061161259
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -525,8 +531,8 @@ MonoBehaviour:
   projectilePrefab: {fileID: 3855385317292670042, guid: 174436b728e3bd4479ccaac61ab34f3b, type: 3}
   fireCooldown: 0.4
   muzzleFlash: {fileID: 0}
-  audioSource: {fileID: 0}
-  fireSound: {fileID: 0}
+  audioSource: {fileID: 5963366850835502651}
+  fireSound: {fileID: 8300000, guid: 8626bb4611e7bc146b9677a7b875870a, type: 3}
 --- !u!114 &5244613501172579403
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -625,8 +631,105 @@ MonoBehaviour:
   shotInterval: 0.12
   pickupAmmoMultiplier: 10
   muzzleFlash: {fileID: 0}
-  audioSource: {fileID: 0}
-  fireSound: {fileID: 0}
+  audioSource: {fileID: 5963366850835502651}
+  fireSound: {fileID: 8300000, guid: 2fe9433e4b4962542889a897ac7cb0c3, type: 3}
+--- !u!82 &5963366850835502651
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6022183837580727950}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 8300000, guid: 8626bb4611e7bc146b9677a7b875870a, type: 3}
+  m_PlayOnAwake: 1
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!198 &8174271977582293637 stripped
 ParticleSystem:
   m_CorrespondingSourceObject: {fileID: 169278523446579869, guid: 4db2d51460e3e9f48a356c138a21e9b9, type: 3}
